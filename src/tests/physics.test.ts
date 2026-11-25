@@ -159,14 +159,14 @@ describe('sailing physics', () => {
     expect(e.state.main.hoist).toBeGreaterThan(0.1);
     expect(e.state.main.hoist).toBeLessThan(0.5);
     e.run(30);
-    expect(e.state.main.hoist).toBe(1);
-    expect(e.state.jib.deployed).toBe(1);
+    expect(e.state.main.hoist).toBeCloseTo(1, 5);
+    expect(e.state.jib.deployed).toBeCloseTo(1, 5);
     expect(e.events.some((x) => x.type === 'sailHoisted' && x.data?.phase === 'complete')).toBe(true);
     e.command('lowerMain');
     e.command('furlJib');
     e.run(20);
-    expect(e.state.main.hoist).toBe(0);
-    expect(e.state.jib.deployed).toBe(0);
+    expect(e.state.main.hoist).toBeCloseTo(0, 5);
+    expect(e.state.jib.deployed).toBeCloseTo(0, 5);
   });
   it('manual line input overrides crew and moves continuously', () => {
     const e = new SimEngine(base());

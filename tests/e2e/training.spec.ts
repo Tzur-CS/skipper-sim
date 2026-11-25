@@ -130,7 +130,8 @@ test('English UI switch and manual line controls', async ({ page }) => {
   const before = await page.evaluate(() => window.__sim!.engine.state.main.sheet);
   const btn = page.getByTestId('line-mainsheet-out');
   await btn.dispatchEvent('pointerdown');
-  await page.waitForTimeout(800);
+  const t0 = await page.evaluate(() => window.__sim!.engine.state.t);
+  await page.waitForFunction((t) => window.__sim!.engine.state.t > t + 0.8, t0, { timeout: 30_000 });
   await btn.dispatchEvent('pointerup');
   const after = await page.evaluate(() => window.__sim!.engine.state.main.sheet);
   expect(after).toBeLessThan(before - 0.1);

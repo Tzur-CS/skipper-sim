@@ -12,6 +12,7 @@ export function CameraRig({ heelRef }: { heelRef: React.RefObject<THREE.Group | 
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const mode = useApp((s) => s.camera);
   const cameraHeel = useApp((s) => s.settings.cameraHeel);
+  const size = useThree((s) => s.size);
   const tmp = useMemo(() => ({ eye: new THREE.Vector3(), look: new THREE.Vector3(), q: new THREE.Quaternion(), e: new THREE.Euler(0, 0, 0, 'YXZ') }), []);
 
   useFrame((_, dt) => {
@@ -42,6 +43,25 @@ export function CameraRig({ heelRef }: { heelRef: React.RefObject<THREE.Group | 
       camera.lookAt(bx, 1, bz);
       camera.fov = 55;
       camera.filmOffset = 12;
+    } else if (mode === 'winches') {
+      // Close-up of the cockpit: both jib-sheet winches and the mainsheet winch, seen from above the helm.
+      const heel = heelRef.current;
+      const yaw = clamp(view.yaw, -1.2, 1.2);
+      const el = clamp(0.75 + view.pitch * 0.5, 0.2, 1.3);
+      const dist = 3.6 * view.zoom;
+      tmp.look.set(0, 1.15, 3.95);
+      tmp.eye.set(tmp.look.x - Math.sin(yaw) * Math.cos(el) * dist, tmp.look.y + Math.sin(el) * dist, tmp.look.z + Math.cos(yaw) * Math.cos(el) * dist);
+      if (heel) {
+        heel.updateWorldMatrix(true, false);
+        tmp.eye.applyMatrix4(heel.matrixWorld);
+        tmp.look.applyMatrix4(heel.matrixWorld);
+      }
+      camera.position.copy(tmp.eye);
+      camera.lookAt(tmp.look);
+      camera.fov = 58;
+      camera.filmOffset = 0;
+      // Frame the cockpit up and to the left, clear of the sail-control panel at the bottom right.
+      camera.setViewOffset(size.width, size.height, size.width * 0.1, size.height * 0.12, size.width, size.height);
     } else {
       tmp.eye.set(bx, 95 * view.zoom, bz + 0.01);
       camera.position.lerp(tmp.eye, k);
@@ -51,6 +71,7 @@ export function CameraRig({ heelRef }: { heelRef: React.RefObject<THREE.Group | 
       camera.fov = 50;
       camera.filmOffset = 12;
     }
+    if (mode !== 'winches' && camera.view?.enabled) camera.clearViewOffset();
     camera.updateProjectionMatrix();
   });
   return null;

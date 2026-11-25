@@ -71,6 +71,12 @@ test('home screen in Hebrew RTL, start free sailing in one tap', async ({ page }
   await page.getByTestId('cam-cycle').click();
   await page.waitForTimeout(800);
   await page.screenshot({ path: `screenshots/e2e-${info.project.name}-top.png` });
+  // winch close-up: four winches with the sheets on them, instrument panel hidden
+  await page.getByTestId('cam-cycle').click();
+  await expect(page.getByTestId('cam-cycle')).toHaveAttribute('data-camera', 'winches');
+  await expect(page.getByTestId('instruments')).toHaveCount(0);
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `screenshots/e2e-${info.project.name}-winches.png` });
   expect(errors).toEqual([]);
 });
 

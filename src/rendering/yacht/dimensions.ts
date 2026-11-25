@@ -20,7 +20,13 @@ export const L = {
   jibFoot: 5.4,
   mainFoot: YACHT.boomLength - 0.2,
   jibCar: { x: 1.5, y: 1.35, z: 0.9 },
-  winch: { x: 1.42, y: 1.32, z: 3.7 },
+  /** Jib-sheet winches (one per side), forward on the cockpit coamings. */
+  winch: { x: 1.42, y: 1.32, z: 3.2 },
+  /** Mainsheet winches (one per side), aft on the coamings within reach of the helm. */
+  mainWinch: { x: 1.42, y: 1.32, z: 4.7 },
+  /** Turning blocks at each end of the traveller, and the fairlead on top of the coaming. */
+  mainBlock: { x: 0.92, y: 1.08 },
+  mainFairlead: { x: 1.22, y: 1.5, z: 4.35 },
   traveller: { y: 1.05, z: 3.55 },
 };
 

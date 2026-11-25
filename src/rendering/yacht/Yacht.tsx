@@ -7,9 +7,12 @@ import { createSailGeometry, updateSail } from '../sails/sailGeometry';
 import { buildDeck, buildHull } from './hullGeometry';
 import { L } from './dimensions';
 import { DynLine, staticLine } from './DynLine';
+import { createWinch, drumEntry } from './winch';
 
 const WHITE = '#f3f5f7';
 const SAIL = '#f7f4ea';
+/** Rope colours: port jib sheet red, starboard jib sheet green, mainsheet blue (same as the line buttons). */
+const ROPE = { port: '#e5534b', stbd: '#3fb950', main: '#388bfd' };
 
 /** Procedural ~40 ft sloop driven entirely by the simulation state. */
 export function Yacht({ yawRef, heelRef }: { yawRef: React.RefObject<THREE.Group | null>; heelRef: React.RefObject<THREE.Group | null> }) {
@@ -46,16 +49,42 @@ export function Yacht({ yawRef, heelRef }: { yawRef: React.RefObject<THREE.Group
 
   const dyn = useMemo(
     () => ({
-      mainsheet: new DynLine(8, '#1f6feb'),
-      jibPort: new DynLine(16, '#d73a49'),
-      jibStbd: new DynLine(16, '#2ea043'),
-      halyard: new DynLine(4, '#e3b341'),
-      furling: new DynLine(6, '#a371f7'),
+      mainsheet: new DynLine(10, ROPE.main, 3.5),
+      mainPort: new DynLine(16, ROPE.main, 3.5),
+      mainStbd: new DynLine(16, ROPE.main, 3.5),
+      jibPort: new DynLine(24, ROPE.port, 3.5),
+      jibStbd: new DynLine(24, ROPE.stbd, 3.5),
+      halyard: new DynLine(4, '#e3b341', 2),
+      furling: new DynLine(6, '#a371f7', 2),
     }),
     [],
   );
 
+  const winches = useMemo(() => {
+    const tail = new THREE.Vector3(0.55, -0.3, 0);
+    const make = (color: string, side: -1 | 1, p: { x: number; y: number; z: number }) => {
+      const w = createWinch(color, tail);
+      w.group.position.set(side * p.x, p.y, p.z);
+      if (side > 0) w.group.rotation.y = Math.PI; // tail always leads inboard
+      return w;
+    };
+    return {
+      port: make(ROPE.port, -1, L.winch),
+      stbd: make(ROPE.stbd, 1, L.winch),
+      mainPort: make(ROPE.main, -1, L.mainWinch),
+      mainStbd: make(ROPE.main, 1, L.mainWinch),
+      prev: { port: -1, stbd: -1, mainPort: -1, mainStbd: -1 },
+    };
+  }, []);
+  const carRef = useRef<THREE.Mesh>(null);
+
   const tmp = useMemo(() => ({ v: new THREE.Vector3(), clew: new THREE.Vector3(), head: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3() }), []);
+  /** Turn the drum (ratchet: only while the sheet is being trimmed in). */
+  const spinWinch = (w: (typeof winches)['port'], key: 'port' | 'stbd' | 'mainPort' | 'mainStbd', sheet: number, loaded: boolean) => {
+    const prev = winches.prev[key];
+    if (prev >= 0 && loaded && sheet > prev) w.drum.rotation.y -= (sheet - prev) * 60;
+    winches.prev[key] = sheet;
+  };
   const forestay = useMemo(() => {
     const a = new THREE.Vector3(...L.tack);
     const b = new THREE.Vector3(0, L.hounds - 0.5, L.mastZ);
@@ -123,7 +152,23 @@ export function Yacht({ yawRef, heelRef }: { yawRef: React.RefObject<THREE.Group
     // Running rigging
     const th = s.main.boomAngle * DEG;
     const boomEnd = tmp.a.set(Math.sin(th) * (L.boomLength - 1.3), L.goosenecY - 0.05, L.mastZ + Math.cos(th) * (L.boomLength - 1.3));
-    dyn.mainsheet.setPath([boomEnd, tmp.b.set(boomEnd.x * 0.3, L.traveller.y, L.traveller.z)], (1 - s.main.sheet) * 0.2);
+    const carX = THREE.MathUtils.clamp(boomEnd.x * 0.3, -0.85, 0.85);
+    if (carRef.current) carRef.current.position.x = carX;
+    const car0 = tmp.b.set(carX, L.traveller.y + 0.05, L.traveller.z);
+    dyn.mainsheet.setPath([boomEnd.clone(), car0.clone()], (1 - s.main.sheet) * 0.2);
+    // German-style mainsheet: led from the car to a block at each end of the traveller, then aft to a
+    // winch on each side by the helm. It is trimmed on the windward (high-side) winch.
+    const windward = s.main.boomAngle >= 0 ? -1 : 1;
+    for (const side of [-1, 1] as const) {
+      const block = new THREE.Vector3(side * L.mainBlock.x, L.mainBlock.y, L.traveller.z);
+      const fair = new THREE.Vector3(side * L.mainFairlead.x, L.mainFairlead.y, L.mainFairlead.z);
+      const mw = new THREE.Vector3(side * L.mainWinch.x, L.mainWinch.y, L.mainWinch.z);
+      (side < 0 ? dyn.mainPort : dyn.mainStbd).setPath([car0.clone(), block, fair, drumEntry(mw, fair, new THREE.Vector3())]);
+      const w = side < 0 ? winches.mainPort : winches.mainStbd;
+      w.wrapsLoaded.visible = true;
+      w.wrapsLazy.visible = false;
+      spinWinch(w, side < 0 ? 'mainPort' : 'mainStbd', s.main.sheet, side === windward);
+    }
     const jt = s.jib.angle * DEG;
     const jc = L.jibFoot * dep;
     tmp.clew.set(L.tack[0] + Math.sin(jt) * jc, L.tack[1] + 0.06 * jc, L.tack[2] + Math.cos(jt) * jc);
@@ -131,10 +176,15 @@ export function Yacht({ yawRef, heelRef }: { yawRef: React.RefObject<THREE.Group
       const sheet = side < 0 ? s.jib.portSheet : s.jib.starboardSheet;
       const line = side < 0 ? dyn.jibPort : dyn.jibStbd;
       const car = tmp.v.set(side * L.jibCar.x, L.jibCar.y, L.jibCar.z);
-      const winch = tmp.c.set(side * L.winch.x, L.winch.y + 0.25, L.winch.z);
+      const wpos = new THREE.Vector3(side * L.winch.x, L.winch.y, L.winch.z);
       const onSide = Math.sign(s.jib.angle) === side;
-      line.setPath([tmp.clew.clone(), car.clone(), winch.clone()], onSide ? (1 - sheet) * 0.35 : 0.9 * (1 - sheet) + 0.15);
+      line.setPath([tmp.clew.clone(), car.clone(), drumEntry(wpos, car, new THREE.Vector3())], onSide ? (1 - sheet) * 0.35 : 0.9 * (1 - sheet) + 0.15);
       line.object.visible = dep > 0.02;
+      // Working sheet: three wraps and the tail in the self-tailer; lazy sheet: one loose wrap.
+      const w = side < 0 ? winches.port : winches.stbd;
+      w.wrapsLoaded.visible = onSide;
+      w.wrapsLazy.visible = !onSide;
+      spinWinch(w, side < 0 ? 'port' : 'stbd', sheet, onSide);
     }
     const headY = L.goosenecY + 0.12 + s.main.hoist * luffLen;
     dyn.halyard.setPath([tmp.a.set(0.12, L.mastBaseY, L.mastZ - 0.1), tmp.b.set(0.12, L.mastTopY, L.mastZ - 0.1), tmp.c.set(0.02, headY, L.mastZ + 0.1)]);
@@ -194,10 +244,10 @@ export function Yacht({ yawRef, heelRef }: { yawRef: React.RefObject<THREE.Group
               <boxGeometry args={[0.04, 0.6, 4.0]} />
               <meshStandardMaterial color="#e8e8e2" side={THREE.DoubleSide} />
             </mesh>
-            {/* primary winch */}
-            <mesh position={[s * L.winch.x, L.winch.y + 0.12, L.winch.z]}>
-              <cylinderGeometry args={[0.1, 0.13, 0.24, 14]} />
-              <meshStandardMaterial color="#9aa4ad" metalness={0.8} roughness={0.3} />
+            {/* winch pad on the cockpit coaming */}
+            <mesh position={[s * L.winch.x, L.winch.y - 0.06, L.winch.z]}>
+              <boxGeometry args={[0.4, 0.12, 0.42]} />
+              <meshStandardMaterial color={WHITE} roughness={0.5} />
             </mesh>
             {/* coachroof winch */}
             <mesh position={[s * 0.85, 1.95, 1.2]}>
@@ -215,6 +265,30 @@ export function Yacht({ yawRef, heelRef }: { yawRef: React.RefObject<THREE.Group
           <boxGeometry args={[2.4, 0.04, 0.4]} />
           <meshStandardMaterial color="#cdbf9f" />
         </mesh>
+        <mesh ref={carRef} position={[0, L.traveller.y + 0.04, L.traveller.z]}>
+          <boxGeometry args={[0.14, 0.06, 0.1]} />
+          <meshStandardMaterial color="#30363d" metalness={0.5} />
+        </mesh>
+        {[-1, 1].map((s) => (
+          <group key={s}>
+            <mesh position={[s * L.mainBlock.x, L.mainBlock.y, L.traveller.z]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.045, 0.045, 0.035, 12]} />
+              <meshStandardMaterial color="#30363d" metalness={0.5} />
+            </mesh>
+            <mesh position={[s * L.mainFairlead.x, L.mainFairlead.y - 0.04, L.mainFairlead.z]}>
+              <boxGeometry args={[0.08, 0.06, 0.14]} />
+              <meshStandardMaterial color="#30363d" metalness={0.5} />
+            </mesh>
+            <mesh position={[s * L.mainWinch.x, L.mainWinch.y - 0.06, L.mainWinch.z]}>
+              <boxGeometry args={[0.4, 0.12, 0.42]} />
+              <meshStandardMaterial color={WHITE} roughness={0.5} />
+            </mesh>
+          </group>
+        ))}
+        <primitive object={winches.port.group} />
+        <primitive object={winches.stbd.group} />
+        <primitive object={winches.mainPort.group} />
+        <primitive object={winches.mainStbd.group} />
         {/* Traveller bar */}
         <mesh position={[0, L.traveller.y, L.traveller.z]}>
           <boxGeometry args={[1.9, 0.05, 0.08]} />
@@ -294,6 +368,8 @@ export function Yacht({ yawRef, heelRef }: { yawRef: React.RefObject<THREE.Group
         </mesh>
         <primitive object={lines} />
         <primitive object={dyn.mainsheet.object} />
+        <primitive object={dyn.mainPort.object} />
+        <primitive object={dyn.mainStbd.object} />
         <primitive object={dyn.jibPort.object} />
         <primitive object={dyn.jibStbd.object} />
         <primitive object={dyn.halyard.object} />

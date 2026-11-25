@@ -5,7 +5,7 @@ import type { TrainingMode, TrainingResult } from '../training/evaluation/evalua
 import { load, loadArray, save } from './storage';
 
 export type Screen = 'home' | 'select' | 'sim' | 'results' | 'settings';
-export type CameraMode = 'helm' | 'chase' | 'top';
+export type CameraMode = 'helm' | 'chase' | 'top' | 'winches';
 
 export interface Settings {
   lang: Lang;

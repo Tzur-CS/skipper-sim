@@ -72,13 +72,14 @@ export function SimScreen() {
         <div className="hud-scale absolute inset-0">
         <div className="absolute top-[max(env(safe-area-inset-top),6px)] left-[max(env(safe-area-inset-left),6px)] pointer-events-auto flex flex-col gap-1">
           <TopBar />
-          <InstrumentPanel />
+          {/* The winch close-up hides the instrument panel so the jib-sheet winches stay visible. */}
+          {camera !== 'winches' && <InstrumentPanel />}
         </div>
         <div className="absolute top-[max(env(safe-area-inset-top),6px)] right-[max(env(safe-area-inset-right),8px)] pointer-events-auto flex flex-col items-end gap-5">
           <Compass />
         </div>
         <div className="absolute top-[max(env(safe-area-inset-top),6px)] left-[calc(max(env(safe-area-inset-left),6px)+270px)] pointer-events-auto">
-          {session.kind === 'scenario' ? <TrainingOverlay /> : <FreeSailPanel />}
+          {session.kind === 'scenario' ? <TrainingOverlay /> : camera !== 'winches' && <FreeSailPanel />}
         </div>
         <div className="absolute bottom-[max(env(safe-area-inset-bottom),8px)] left-[max(env(safe-area-inset-left),8px)] pointer-events-auto">
           <Helm />

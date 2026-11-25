@@ -25,8 +25,8 @@ export function TopBar() {
   const setPaused = useApp((s) => s.setPaused);
   const go = useApp((s) => s.go);
   const isScenario = useApp((s) => s.session.kind === 'scenario');
-  const cams: CameraMode[] = ['helm', 'chase', 'top'];
-  const label: Record<CameraMode, string> = { helm: t('camHelm'), chase: t('camChase'), top: t('camTop') };
+  const cams: CameraMode[] = ['helm', 'chase', 'top', 'winches'];
+  const label: Record<CameraMode, string> = { helm: t('camHelm'), chase: t('camChase'), top: t('camTop'), winches: t('camWinches') };
   return (
     <div className="flex items-center gap-1" data-testid="topbar">
       <button className="btn bs glass" data-testid="btn-menu" onClick={() => go(isScenario ? 'select' : 'home')}>

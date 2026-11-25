@@ -5,21 +5,24 @@ import { useT } from '../../store/appStore';
 import { useHighlight } from '../useHighlight';
 import type { CrewCommandId, LineId } from '../../simulation/types';
 
-function Cmd({ id, tone }: { id: CrewCommandId; tone?: 'port' | 'stbd' }) {
+export function Cmd({ id, tone, onDone, className = '' }: { id: CrewCommandId; tone?: 'port' | 'stbd'; onDone?: () => void; className?: string }) {
   const t = useT();
   const hl = useHighlight(id);
   return (
     <button
-      className={`btn bs ${tone === 'port' ? 'btn-port' : tone === 'stbd' ? 'btn-stbd' : ''} ${hl ? 'hl' : ''}`}
+      className={`btn bs ${tone === 'port' ? 'btn-port' : tone === 'stbd' ? 'btn-stbd' : ''} ${hl ? 'hl' : ''} ${className}`}
       data-testid={`cmd-${id}`}
-      onClick={() => engine.command(id)}
+      onClick={() => {
+        engine.command(id);
+        onDone?.();
+      }}
     >
       {t(`cmd.${id}`)}
     </button>
   );
 }
 
-function Hold({ line, dir, label, tone }: { line: LineId; dir: 1 | -1; label: string; tone?: 'port' | 'stbd' }) {
+export function Hold({ line, dir, label, tone, className = '' }: { line: LineId; dir: 1 | -1; label: string; tone?: 'port' | 'stbd'; className?: string }) {
   const [p, setP] = useState(false);
   const start = (e: React.PointerEvent) => {
     try { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* synthetic events */ }
@@ -32,7 +35,7 @@ function Hold({ line, dir, label, tone }: { line: LineId; dir: 1 | -1; label: st
   };
   return (
     <button
-      className={`btn bs min-w-[44px] ${tone === 'port' ? 'btn-port' : tone === 'stbd' ? 'btn-stbd' : ''}`}
+      className={`btn bs min-w-[44px] ${tone === 'port' ? 'btn-port' : tone === 'stbd' ? 'btn-stbd' : ''} ${className}`}
       data-pressed={p}
       data-testid={`line-${line}-${dir > 0 ? 'in' : 'out'}`}
       onPointerDown={start}
@@ -45,7 +48,7 @@ function Hold({ line, dir, label, tone }: { line: LineId; dir: 1 | -1; label: st
   );
 }
 
-function Gauge({ value, color }: { value: number; color: string }) {
+export function Gauge({ value, color }: { value: number; color: string }) {
   return (
     <div className="h-2.5 flex-1 rounded bg-white/10 overflow-hidden min-w-[40px]">
       <div className="h-full rounded" style={{ width: `${Math.round(value * 100)}%`, background: color }} />
@@ -65,11 +68,15 @@ function LineRow({ line, label, value, color, outLabel, inLabel, tone }: { line:
   );
 }
 
-/** Bottom-right collapsible panel: crew commands and manual line handling. */
-export function SailControls() {
+/**
+ * Bottom-right collapsible panel: crew commands and manual line handling.
+ * `drawer`: rendered inside the phone layout's slide-in drawer (no own collapse/ack; closes after a command).
+ */
+export function SailControls({ drawer, onClose }: { drawer?: boolean; onClose?: () => void } = {}) {
   const t = useT();
   const [tab, setTab] = useState<'crew' | 'lines'>('crew');
   const [open, setOpen] = useState(true);
+  const done = drawer ? onClose : undefined;
   const h = useHud();
   const crewStatus = h.crew.preparing > 0 ? t('crewPreparing') : h.crew.readyFor ? t('crewReady') : h.crew.busy > 0 ? t('crewWorking') : '';
   const ack = h.crew.lastAck && h.t - h.crew.lastAck.t < 3 ? t(h.crew.lastAck.key) : '';
@@ -80,7 +87,7 @@ export function SailControls() {
       </button>
     );
   return (
-    <div className="glass rounded-xl p-1.5 w-[408px]" data-testid="sail-controls">
+    <div className={drawer ? 'p-1.5' : 'glass rounded-xl p-1.5 w-[408px]'} data-testid="sail-controls">
       <div className="flex items-center gap-1 mb-1">
         <button className={`btn bs ${tab === 'crew' ? 'btn-primary' : ''}`} data-testid="tab-crew" onClick={() => setTab('crew')}>
           {t('crew')}
@@ -88,38 +95,38 @@ export function SailControls() {
         <button className={`btn bs ${tab === 'lines' ? 'btn-primary' : ''}`} data-testid="tab-lines" onClick={() => setTab('lines')}>
           {t('lines')}
         </button>
-        <span className="flex-1 text-[11px] text-amber-200 truncate px-1" data-testid="crew-ack">
+        <span className="flex-1 text-[11px] text-amber-200 truncate px-1" data-testid={drawer ? undefined : 'crew-ack'}>
           {ack || crewStatus}
         </span>
-        <button className="btn bs" aria-label="collapse" onClick={() => setOpen(false)}>
-          ▾
+        <button className="btn bs min-w-[40px]" aria-label="collapse" data-testid={drawer ? 'drawer-close' : undefined} onClick={() => (drawer ? onClose?.() : setOpen(false))}>
+          {drawer ? '✕' : '▾'}
         </button>
       </div>
       {tab === 'crew' ? (
         <div className="flex flex-col gap-1">
           <div className="grid grid-cols-4 gap-1">
-            <Cmd id="prepareTack" />
-            <Cmd id="tack" />
-            <Cmd id="prepareGybe" />
-            <Cmd id="gybe" />
+            <Cmd id="prepareTack" onDone={done} />
+            <Cmd id="tack" onDone={done} />
+            <Cmd id="prepareGybe" onDone={done} />
+            <Cmd id="gybe" onDone={done} />
           </div>
           <div className="grid grid-cols-5 gap-1">
-            <Cmd id="hoistMain" />
-            <Cmd id="lowerMain" />
-            <Cmd id="trimMain" />
-            <Cmd id="easeMain" />
-            <Cmd id="centerMain" />
+            <Cmd id="hoistMain" onDone={done} />
+            <Cmd id="lowerMain" onDone={done} />
+            <Cmd id="trimMain" onDone={done} />
+            <Cmd id="easeMain" onDone={done} />
+            <Cmd id="centerMain" onDone={done} />
           </div>
           {/* Physical layout: port controls on the left, starboard on the right. */}
           <div className="grid grid-cols-[1fr_1fr_0.9fr_0.9fr] gap-1" dir="ltr">
-            <Cmd id="releaseJibPort" tone="port" />
-            <Cmd id="trimJibPort" tone="port" />
-            <Cmd id="trimJibStarboard" tone="stbd" />
-            <Cmd id="releaseJibStarboard" tone="stbd" />
+            <Cmd id="releaseJibPort" tone="port" onDone={done} />
+            <Cmd id="trimJibPort" tone="port" onDone={done} />
+            <Cmd id="trimJibStarboard" tone="stbd" onDone={done} />
+            <Cmd id="releaseJibStarboard" tone="stbd" onDone={done} />
           </div>
           <div className="grid grid-cols-2 gap-1">
-            <Cmd id="unfurlJib" />
-            <Cmd id="furlJib" />
+            <Cmd id="unfurlJib" onDone={done} />
+            <Cmd id="furlJib" onDone={done} />
           </div>
         </div>
       ) : (
@@ -136,7 +143,7 @@ export function SailControls() {
   );
 }
 
-function SailState() {
+export function SailState() {
   const t = useT();
   const h = useHud();
   const status = (luff: number, backed: boolean, incidence: number, present: boolean) => {

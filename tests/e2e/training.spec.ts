@@ -9,6 +9,11 @@ function collectErrors(page: Page) {
   return errors;
 }
 
+/** Phone layout (short landscape screens) docks controls on the edges; tablets show full panels. */
+async function isPhone(page: Page) {
+  return (await page.getByTestId('instrument-strip').count()) > 0;
+}
+
 /** Simple autopilot executed in the page: hold a signed true wind angle until the results screen. */
 async function holdTwaUntilResults(page: Page, twa: number) {
   await page.evaluate(
@@ -60,7 +65,8 @@ test('home screen in Hebrew RTL, start free sailing in one tap', async ({ page }
   const st = await page.evaluate(() => ({ h: window.__sim!.engine.state.boat.heading, helm: window.__sim!.engine.state.input.helm }));
   expect(st.helm).toBeGreaterThan(0);
   expect(((st.h - h0 + 540) % 360) - 180).toBeGreaterThan(2);
-  // real-time wind change
+  // real-time wind change (on the phone layout the wind panel opens from a chip)
+  if (await isPhone(page)) await page.getByTestId('wind-open').click();
   await page.getByTestId('wind-speed').fill('20');
   expect(await page.evaluate(() => window.__sim!.engine.state.wind.trueSpeed)).toBe(20);
   await page.screenshot({ path: `screenshots/e2e-${info.project.name}-free.png` });
@@ -132,7 +138,10 @@ test('English UI switch and manual line controls', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await page.getByTestId('settings-back').click();
   await page.getByTestId('home-free').click();
-  await page.getByTestId('tab-lines').click();
+  await expect(page.getByTestId('sim-screen')).toBeVisible();
+  const phone = await isPhone(page);
+  // Phone: mainsheet ease/trim is always on screen. Tablet: it is in the "lines" tab.
+  if (!phone) await page.getByTestId('tab-lines').click();
   const before = await page.evaluate(() => window.__sim!.engine.state.main.sheet);
   const btn = page.getByTestId('line-mainsheet-out');
   await btn.dispatchEvent('pointerdown');
@@ -141,6 +150,14 @@ test('English UI switch and manual line controls', async ({ page }) => {
   await btn.dispatchEvent('pointerup');
   const after = await page.evaluate(() => window.__sim!.engine.state.main.sheet);
   expect(after).toBeLessThan(before - 0.1);
+  if (phone) {
+    // the crew drawer opens over the scene and closes again
+    await page.getByTestId('controls-open').click();
+    await expect(page.getByTestId('drawer')).toBeVisible();
+    await page.getByTestId('drawer-close').click();
+    await expect(page.getByTestId('drawer')).toHaveCount(0);
+    await page.getByTestId('instrument-strip').click();
+  }
   await expect(page.getByTestId('instruments')).toContainText('Boat speed');
   // reset language for other tests
   await page.evaluate(() => localStorage.clear());

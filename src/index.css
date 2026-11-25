@@ -46,7 +46,10 @@ body { position: fixed; inset: 0; overflow: hidden; }
   transition: background 0.12s, transform 0.08s;
 }
 .btn:active, .btn[data-pressed="true"] { background: rgba(255, 255, 255, 0.22); transform: scale(0.97); }
-.btn-primary { background: #1f6feb; border-color: #388bfd; }
+/* Buttons floating over the scene need a solid enough backdrop to read against a bright sky. */
+.btn.glass { background: rgba(8, 22, 36, 0.7); }
+.btn.glass:active, .btn.glass[data-pressed="true"] { background: rgba(40, 60, 80, 0.85); }
+.btn-primary, .btn.glass.btn-primary { background: #1f6feb; border-color: #388bfd; }
 .btn-port { border-color: rgba(229, 72, 77, 0.65); }
 .btn-stbd { border-color: rgba(48, 164, 108, 0.7); }
 .hl { box-shadow: 0 0 0 3px #f2cc60, 0 0 18px 2px rgba(242, 204, 96, 0.7); animation: pulse 1.2s ease-in-out infinite; }

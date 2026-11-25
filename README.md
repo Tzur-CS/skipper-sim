@@ -33,6 +33,9 @@ src/
   training/        scenarios (data), evaluation (conditions + evaluator), scoring
   rendering/       R3F scene: yacht (procedural hull/rig), sails (procedural mesh), ocean shader, environment, cameras
   components/      HUD: instruments, compass, helm wheel, sail/crew controls, training overlay
+                   compact/PhoneHud: phone layout (screens ≤520px tall): one-line instruments, steering bar,
+                   mainsheet + working jib sheet always on screen, crew commands in a slide-in drawer,
+                   guided step shows its command as a button
   screens/         Home, ScenarioSelect, SimScreen, Results, Settings
   store/           app store (screens/settings/history), throttled HUD store, runtime (engine + evaluator glue)
   i18n/            all UI text and sailing terminology (Hebrew default, English)

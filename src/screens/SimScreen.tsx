@@ -11,6 +11,20 @@ import { FreeSailPanel } from '../components/cockpit/FreeSailPanel';
 import { useApp, useT } from '../store/appStore';
 import { startRuntime } from '../store/runtime';
 import { clamp } from '../simulation/math';
+import { PhoneHud } from '../components/compact/PhoneHud';
+
+/** Short landscape screens (phones) get the edge-docked phone HUD; tablets keep the full panels. */
+function useCompact(): boolean {
+  const q = '(max-height: 520px)';
+  const [c, setC] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const on = () => setC(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return !!c;
+}
 
 export function SimScreen() {
   const session = useApp((s) => s.session);
@@ -18,6 +32,7 @@ export function SimScreen() {
   const setPaused = useApp((s) => s.setPaused);
   const camera = useApp((s) => s.camera);
   const t = useT();
+  const compact = useCompact();
   const drag = useRef<{ x: number; y: number } | null>(null);
   const [portrait, setPortrait] = useState(false);
 
@@ -70,6 +85,10 @@ export function SimScreen() {
       {/* HUD layout uses physical positions (left/right) so RTL never swaps port and starboard. */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="hud-scale absolute inset-0">
+        {compact ? (
+          <PhoneHud />
+        ) : (
+          <>
         <div className="absolute top-[max(env(safe-area-inset-top),6px)] left-[max(env(safe-area-inset-left),6px)] pointer-events-auto flex flex-col gap-1">
           <TopBar />
           {/* The winch close-up hides the instrument panel so the jib-sheet winches stay visible. */}
@@ -87,6 +106,8 @@ export function SimScreen() {
         <div className="absolute bottom-[max(env(safe-area-inset-bottom),8px)] right-[max(env(safe-area-inset-right),8px)] pointer-events-auto">
           <SailControls />
         </div>
+          </>
+        )}
         <WarningBanner />
         {paused && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-auto bg-black/40" onClick={() => setPaused(false)} data-testid="paused">

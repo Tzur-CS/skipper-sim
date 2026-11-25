@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sea-950: #06121d;
+  --color-sea-900: #0b1d2e;
+  --color-sea-800: #12304a;
+  --color-sea-700: #1b4566;
+  --color-brass: #d4a94a;
+  --color-port: #e5484d;
+  --color-stbd: #30a46c;
+  --font-sans: "Assistant", "Rubik", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
+  background: var(--color-sea-900);
+  color: #e6edf3;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+body { position: fixed; inset: 0; overflow: hidden; }
+
+.safe-t { padding-top: max(env(safe-area-inset-top), 6px); }
+.safe-b { padding-bottom: max(env(safe-area-inset-bottom), 6px); }
+.safe-l { padding-left: max(env(safe-area-inset-left), 6px); }
+.safe-r { padding-right: max(env(safe-area-inset-right), 6px); }
+
+.glass {
+  background: rgba(8, 22, 36, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+.btn {
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-weight: 600;
+  min-height: 40px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  touch-action: manipulation;
+  transition: background 0.12s, transform 0.08s;
+}
+.btn:active, .btn[data-pressed="true"] { background: rgba(255, 255, 255, 0.22); transform: scale(0.97); }
+.btn-primary { background: #1f6feb; border-color: #388bfd; }
+.btn-port { border-color: rgba(229, 72, 77, 0.65); }
+.btn-stbd { border-color: rgba(48, 164, 108, 0.7); }
+.hl { box-shadow: 0 0 0 3px #f2cc60, 0 0 18px 2px rgba(242, 204, 96, 0.7); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 3px #f2cc60, 0 0 6px 0 rgba(242, 204, 96, 0.3); } }
+.flash { animation: flash 0.5s ease-in-out 6; }
+@keyframes flash { 50% { opacity: 0.25; } }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Compact HUD controls for landscape phones (~390px tall); scaled up on larger screens. */
+.bs {
+  min-height: 30px;
+  padding: 3px 4px;
+  font-size: 11.5px;
+  line-height: 1.1;
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hud-scale { zoom: 1; }
+@media (min-height: 560px) and (min-width: 900px) { .hud-scale { zoom: 1.25; } }
+@media (min-height: 760px) and (min-width: 1200px) { .hud-scale { zoom: 1.45; } }

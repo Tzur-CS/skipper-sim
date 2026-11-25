@@ -6,7 +6,7 @@ import { useApp, useLang, useT } from '../../store/appStore';
 import { useHighlight } from '../useHighlight';
 import { clamp } from '../../simulation/math';
 import type { CrewCommandId, LineId } from '../../simulation/types';
-import { Cmd, Gauge, Hold, SailControls } from '../controls/SailControls';
+import { Cmd, Gauge, Hold, LineRow, SailState } from '../controls/SailControls';
 import { InstrumentPanel } from '../instruments/InstrumentPanel';
 import { Compass } from '../instruments/Compass';
 import { TopBar } from '../cockpit/TopBar';
@@ -56,6 +56,7 @@ export function PhoneHud() {
       </div>
 
       {/* Bottom-right: quick sheets + crew drawer button. */}
+      {!drawer && (
       <div className="absolute bottom-[max(env(safe-area-inset-bottom),6px)] pointer-events-auto flex flex-col items-end gap-1" style={{ right: insetR }}>
         <CrewAck />
         <QuickSheets />
@@ -63,16 +64,17 @@ export function PhoneHud() {
           ⛵ {t('crew')}
         </button>
       </div>
+      )}
 
       {drawer && (
         <div className="absolute inset-0 pointer-events-auto" onClick={() => setDrawer(false)} data-testid="drawer-backdrop">
           <div
-            className="absolute top-0 bottom-0 glass !bg-sea-950/90 overflow-y-auto w-[min(420px,58vw)] rounded-s-xl"
-            style={{ right: 0, paddingRight: insetR, paddingTop: 'max(env(safe-area-inset-top),4px)' }}
+            className="absolute glass !bg-sea-950/90 overflow-y-auto w-[min(360px,48vw)] max-h-[calc(100%-12px)] rounded-xl"
+            style={{ right: insetR, bottom: 'max(env(safe-area-inset-bottom),6px)' }}
             onClick={(e) => e.stopPropagation()}
             data-testid="drawer"
           >
-            <SailControls drawer onClose={() => setDrawer(false)} />
+            <CrewDrawer onClose={() => setDrawer(false)} />
           </div>
         </div>
       )}
@@ -331,6 +333,79 @@ function PhoneTrainingCard() {
           <div className="text-[10.5px] text-slate-200">{h.toast.error.suggestion[lang]}</div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Compact crew-command sheet: grouped by sail with short labels, port controls on the left and
+ * starboard on the right. Closes itself after a command.
+ */
+function CrewDrawer({ onClose }: { onClose: () => void }) {
+  const t = useT();
+  const h = useHud();
+  const [tab, setTab] = useState<'crew' | 'lines'>('crew');
+  const b = '!whitespace-normal !min-h-[36px] leading-tight';
+  const head = 'text-[10px] text-slate-400 font-semibold px-0.5';
+  return (
+    <div className="p-1.5 flex flex-col gap-1.5" data-testid="sail-controls">
+      <div className="flex items-center gap-1">
+        <button className={`btn bs flex-1 ${tab === 'crew' ? 'btn-primary' : ''}`} data-testid="tab-crew" onClick={() => setTab('crew')}>
+          {t('crew')}
+        </button>
+        <button className={`btn bs flex-1 ${tab === 'lines' ? 'btn-primary' : ''}`} data-testid="tab-lines" onClick={() => setTab('lines')}>
+          {t('lines')}
+        </button>
+        <button className="btn bs min-w-[40px]" aria-label="close" data-testid="drawer-close" onClick={onClose}>
+          ✕
+        </button>
+      </div>
+      {tab === 'crew' ? (
+        <>
+          <div className="grid grid-cols-4 gap-1">
+            <Cmd id="prepareTack" onDone={onClose} className={b} />
+            <Cmd id="tack" onDone={onClose} className={b} />
+            <Cmd id="prepareGybe" onDone={onClose} className={b} />
+            <Cmd id="gybe" onDone={onClose} className={b} />
+          </div>
+          <div>
+            <div className={head}>{t('mainsail')}</div>
+            <div className="grid grid-cols-5 gap-1">
+              <Cmd id="hoistMain" label={t('hoist')} onDone={onClose} className={b} />
+              <Cmd id="lowerMain" label={t('lower')} onDone={onClose} className={b} />
+              <Cmd id="trimMain" label={t('trimIn')} onDone={onClose} className={b} />
+              <Cmd id="easeMain" label={t('ease')} onDone={onClose} className={b} />
+              <Cmd id="centerMain" label={t('center')} onDone={onClose} className={b} />
+            </div>
+          </div>
+          <div>
+            <div className={head}>{t('jib')}</div>
+            <div className="grid grid-cols-[1fr_1fr_6px_1fr_1fr] gap-1 items-end" dir="ltr">
+              <div className="col-span-2 text-center text-[10px] text-port font-bold">◀ {t('port')}</div>
+              <div />
+              <div className="col-span-2 text-center text-[10px] text-stbd font-bold">{t('starboard')} ▶</div>
+              <Cmd id="releaseJibPort" label={t('ease')} tone="port" onDone={onClose} className={b} />
+              <Cmd id="trimJibPort" label={t('trimIn')} tone="port" onDone={onClose} className={b} />
+              <div />
+              <Cmd id="trimJibStarboard" label={t('trimIn')} tone="stbd" onDone={onClose} className={b} />
+              <Cmd id="releaseJibStarboard" label={t('ease')} tone="stbd" onDone={onClose} className={b} />
+            </div>
+            <div className="grid grid-cols-2 gap-1 mt-1">
+              <Cmd id="unfurlJib" label={t('unfurl')} onDone={onClose} className={b} />
+              <Cmd id="furlJib" label={t('furl')} onDone={onClose} className={b} />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <LineRow line="mainsheet" label={t('mainsheet')} value={h.mainsheet} color="#1f6feb" outLabel={t('ease')} inLabel={t('trimIn')} />
+          <LineRow line="jibPort" label={t('jibPortSheet')} value={h.jibPort} color="#e5484d" outLabel={t('ease')} inLabel={t('trimIn')} tone="port" />
+          <LineRow line="jibStarboard" label={t('jibStbdSheet')} value={h.jibStbd} color="#30a46c" outLabel={t('ease')} inLabel={t('trimIn')} tone="stbd" />
+          <LineRow line="halyard" label={t('halyard')} value={h.mainHoist} color="#e3b341" outLabel={t('lower')} inLabel={t('hoist')} />
+          <LineRow line="furler" label={t('furler')} value={h.jibDeployed} color="#a371f7" outLabel={t('furl')} inLabel={t('unfurl')} />
+        </div>
+      )}
+      <SailState />
     </div>
   );
 }

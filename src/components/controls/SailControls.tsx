@@ -5,7 +5,7 @@ import { useT } from '../../store/appStore';
 import { useHighlight } from '../useHighlight';
 import type { CrewCommandId, LineId } from '../../simulation/types';
 
-export function Cmd({ id, tone, onDone, className = '' }: { id: CrewCommandId; tone?: 'port' | 'stbd'; onDone?: () => void; className?: string }) {
+export function Cmd({ id, tone, onDone, className = '', label }: { id: CrewCommandId; tone?: 'port' | 'stbd'; onDone?: () => void; className?: string; label?: string }) {
   const t = useT();
   const hl = useHighlight(id);
   return (
@@ -17,7 +17,7 @@ export function Cmd({ id, tone, onDone, className = '' }: { id: CrewCommandId; t
         onDone?.();
       }}
     >
-      {t(`cmd.${id}`)}
+      {label ?? t(`cmd.${id}`)}
     </button>
   );
 }
@@ -56,7 +56,7 @@ export function Gauge({ value, color }: { value: number; color: string }) {
   );
 }
 
-function LineRow({ line, label, value, color, outLabel, inLabel, tone }: { line: LineId; label: string; value: number; color: string; outLabel: string; inLabel: string; tone?: 'port' | 'stbd' }) {
+export function LineRow({ line, label, value, color, outLabel, inLabel, tone }: { line: LineId; label: string; value: number; color: string; outLabel: string; inLabel: string; tone?: 'port' | 'stbd' }) {
   const hl = useHighlight(line);
   return (
     <div className={`flex items-center gap-1.5 rounded-lg ${hl ? 'hl' : ''}`}>

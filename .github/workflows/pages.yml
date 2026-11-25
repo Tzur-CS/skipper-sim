@@ -1,8 +1,7 @@
 name: Deploy to GitHub Pages
 
+# Manual only: GitHub Pages is not enabled (private repo on a free plan). Hosting is via Vercel/Cloudflare.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

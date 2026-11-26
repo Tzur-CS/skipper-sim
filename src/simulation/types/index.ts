@@ -1,3 +1,5 @@
+import type { VesselState, WorldDef } from '../world/types';
+
 /** Core typed domain models for the sailing simulation. All angles are in degrees unless noted. */
 
 export type Side = 'port' | 'starboard';
@@ -147,7 +149,18 @@ export type SimEventType =
   | 'inIrons'
   | 'pointOfSailChanged'
   | 'stabilized'
-  | 'reset';
+  | 'reset'
+  // harbour / traffic scenarios
+  | 'throttleChanged'
+  | 'collision'
+  | 'closeQuarters'
+  | 'vesselClose'
+  | 'vesselCpa'
+  | 'zoneEntered'
+  | 'zoneExited'
+  | 'gateCrossed'
+  /** The student answered an identification question (data: q, choice, correct). */
+  | 'answer';
 
 export interface SimEventSnapshot {
   heading: number;
@@ -181,6 +194,12 @@ export interface SimState {
   crew: CrewState;
   derived: DerivedState;
   input: ControlInput;
+  /** Auxiliary engine. throttle -1 (astern) .. 1 (full ahead); `target` is the lever position. */
+  motor: { fitted: boolean; throttle: number; target: number };
+  /** Other vessels (harbour / traffic scenarios). */
+  vessels: VesselState[];
+  /** Ids of world zones the own boat is in. */
+  zones: string[];
 }
 
 /** Initial conditions used by scenarios and free sailing. */
@@ -196,4 +215,13 @@ export interface InitialConditions {
   rudder?: number;
   /** Set the mainsheet and leeward jib sheet to optimal trim for the initial apparent wind. */
   autoTrim?: boolean;
+  /** Start position (m). Default 0,0. */
+  x?: number;
+  y?: number;
+  /** Use the auxiliary engine (shows the throttle). */
+  motor?: boolean;
+  /** Initial throttle lever position. */
+  throttle?: number;
+  /** Harbour, traffic, time of day. */
+  world?: WorldDef;
 }

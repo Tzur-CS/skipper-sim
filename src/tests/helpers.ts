@@ -26,3 +26,24 @@ export function setup(def: ScenarioDef, mode: TrainingMode = 'practice') {
   };
   return { engine, ev, run, holdTwa };
 }
+
+/** Steer toward a point (world metres). Returns the distance to it. */
+export function steerTo(engine: SimEngine, x: number, y: number, gain = 1 / 25): number {
+  const s = engine.state;
+  const brg = (Math.atan2(x - s.boat.x, y - s.boat.y) * 180) / Math.PI;
+  const err = norm180(brg - s.boat.heading);
+  engine.setHelm(clamp(err * gain - s.boat.yawRate * 0.08, -1, 1));
+  return Math.hypot(x - s.boat.x, y - s.boat.y);
+}
+
+/** Follow waypoints in order; advance when within `tol` m. Returns a control function for `run`. */
+export function route(engine: SimEngine, pts: Array<[number, number]>, tol = 12) {
+  let i = 0;
+  return () => {
+    if (i >= pts.length) {
+      engine.setHelm(0);
+      return;
+    }
+    if (steerTo(engine, pts[i][0], pts[i][1]) < tol) i++;
+  };
+}

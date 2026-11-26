@@ -1,10 +1,13 @@
 import { useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { engine } from '../../store/runtime';
+import { useHud } from '../../store/hudStore';
 
 export const HORIZON = new THREE.Color('#b9d3e6');
 export const SUN_DIR = new THREE.Vector3(-0.45, 0.55, -0.7).normalize();
+const NIGHT_HORIZON = new THREE.Color('#03070f');
+const MOON = new THREE.Vector3(0.5, 0.45, 0.6).normalize();
 
 /**
  * Lightweight ocean: one large plane following the boat. Waves are shaded per-pixel from
@@ -23,6 +26,7 @@ export function Ocean() {
           uShallow: { value: new THREE.Color('#1f6f8b') },
           uWindDir: { value: new THREE.Vector2(0, 1) },
           uWind: { value: 12 },
+          uSunI: { value: 1 },
         },
         vertexShader: /* glsl */ `
           varying vec3 vWorld;
@@ -34,7 +38,7 @@ export function Ocean() {
         fragmentShader: /* glsl */ `
           precision mediump float;
           uniform float uTime; uniform vec3 uSun; uniform vec3 uHorizon; uniform vec3 uDeep; uniform vec3 uShallow;
-          uniform vec2 uWindDir; uniform float uWind;
+          uniform vec2 uWindDir; uniform float uWind; uniform float uSunI;
           varying vec3 vWorld;
           vec2 wave(vec2 p, vec2 d, float k, float a, float s) {
             float ph = dot(p, d) * k + uTime * s;
@@ -57,19 +61,28 @@ export function Ocean() {
             float dist = length(cameraPosition.xz - vWorld.xz);
             float fres = pow(1.0 - max(dot(n, viewDir), 0.0), 4.0);
             vec3 base = mix(uDeep, uShallow, clamp(0.5 + g.x * 0.8, 0.0, 1.0) * 0.35);
-            vec3 sky = mix(uHorizon, vec3(0.45, 0.65, 0.85), clamp(reflect(-viewDir, n).y * 2.0, 0.0, 1.0));
+            vec3 sky = mix(uHorizon, mix(uHorizon, vec3(0.45, 0.65, 0.85), uSunI), clamp(reflect(-viewDir, n).y * 2.0, 0.0, 1.0));
             vec3 col = mix(base, sky, clamp(fres * 0.9 + 0.08, 0.0, 1.0));
             vec3 h = normalize(uSun + viewDir);
-            col += vec3(1.0, 0.95, 0.85) * pow(max(dot(n, h), 0.0), 180.0) * 1.6 * (1.0 - smoothstep(30.0, 90.0, cameraPosition.y));
+            col += vec3(1.0, 0.95, 0.85) * pow(max(dot(n, h), 0.0), 180.0) * 1.6 * uSunI * (1.0 - smoothstep(30.0, 90.0, cameraPosition.y));
             // whitecaps hint in stronger wind
             float crest = smoothstep(0.85, 1.0, length(g) / (0.07 * amp + 0.01)) * clamp((uWind - 12.0) / 10.0, 0.0, 1.0);
             col = mix(col, vec3(0.95), crest * 0.5);
-            float fog = smoothstep(150.0, 1800.0, dist);
+            float fog = smoothstep(150.0, mix(5000.0, 1800.0, uSunI), dist);
             gl_FragColor = vec4(mix(col, uHorizon, fog), 1.0);
           }`,
       }),
     [],
   );
+  const night = useHud((h) => h.timeOfDay) === 'night';
+  useEffect(() => {
+    const u = mat.uniforms;
+    (u.uDeep.value as THREE.Color).set(night ? '#02070d' : '#0d3a5c');
+    (u.uShallow.value as THREE.Color).set(night ? '#071722' : '#1f6f8b');
+    u.uHorizon.value = night ? NIGHT_HORIZON : HORIZON;
+    u.uSun.value = night ? MOON : SUN_DIR;
+    u.uSunI.value = night ? 0.12 : 1;
+  }, [night, mat]);
   useFrame(({ clock }) => {
     const s = engine.state;
     mat.uniforms.uTime.value = clock.getElapsedTime();

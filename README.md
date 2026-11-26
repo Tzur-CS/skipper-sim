@@ -67,6 +67,11 @@ frame, and the 2D HUD gets a 10 Hz snapshot to avoid React re-renders. See
 - Six data-driven drills (tack and gybe in both directions), guided/practice/exam modes,
   deterministic evaluator, results with score by area, errors with explanation and suggestion,
   recoveries, timeline; progress stored locally and shown on the home screen.
+- Harbour, traffic and night drills off Tel Aviv: leaving and entering a schematic Gordon marina
+  under engine (throttle lever, speed limit, keep right, entrance lights), right of way under sail
+  (give way / stand on), coastal traffic (windsurfers, a kitesurfer, a trawler, children in Optimists,
+  police, bathing area) and a night passage identifying vessels by their navigation lights.
+  Other vessels show sector-correct lights; a north-up chart shows the marina, traffic and target.
 - Free sailing with live wind direction (0–360°) and speed (5–25 kt) and instant reset.
 - Hebrew default with RTL, English option; PWA manifest and offline service worker;
   pause when the app goes to the background; safe-area and orientation handling.

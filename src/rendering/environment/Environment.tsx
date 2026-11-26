@@ -4,10 +4,23 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { engine } from '../../store/runtime';
 import { useApp } from '../../store/appStore';
+import { useHud } from '../../store/hudStore';
 import { SIM } from '../../simulation/config';
 import { HORIZON, SUN_DIR } from '../ocean/Ocean';
 
+export const NIGHT_SKY = new THREE.Color('#03070f');
+const MOON_DIR = new THREE.Vector3(0.5, 0.45, 0.6).normalize();
+
 export function Lights() {
+  const night = useHud((s) => s.timeOfDay) === 'night';
+  if (night)
+    return (
+      <>
+        <hemisphereLight args={['#5a6f99', '#05080d', 0.22]} />
+        <directionalLight position={MOON_DIR.clone().multiplyScalar(100)} intensity={0.25} color="#b8c8ff" />
+        <ambientLight intensity={0.06} />
+      </>
+    );
   return (
     <>
       <hemisphereLight args={['#dbe9f6', '#2a4a63', 0.9]} />
@@ -17,7 +30,46 @@ export function Lights() {
   );
 }
 
+/** Star field and a moon for night scenarios. */
+function NightSky() {
+  const stars = useMemo(() => {
+    const p: number[] = [];
+    for (let i = 0; i < 900; i++) {
+      const a = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
+      const b = Math.abs(Math.sin(i * 78.233) * 24634.6345) % 1;
+      const th = a * Math.PI * 2;
+      const el = Math.asin(0.04 + b * 0.96);
+      p.push(Math.cos(el) * Math.sin(th) * 3000, Math.sin(el) * 3000, Math.cos(el) * Math.cos(th) * 3000);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
+    return g;
+  }, []);
+  const ref = useRef<THREE.Group>(null);
+  useFrame(({ camera }) => ref.current?.position.copy(camera.position));
+  return (
+    <group ref={ref}>
+      <points geometry={stars}>
+        <pointsMaterial color="#dfe8ff" size={1.6} sizeAttenuation={false} fog={false} transparent opacity={0.8} />
+      </points>
+      <mesh position={MOON_DIR.clone().multiplyScalar(2800)}>
+        <sphereGeometry args={[40, 16, 12]} />
+        <meshBasicMaterial color="#e9ecf5" fog={false} />
+      </mesh>
+    </group>
+  );
+}
+
 export function SkyDome() {
+  const tod = useHud((s) => s.timeOfDay);
+  if (tod === 'night')
+    return (
+      <>
+        <color attach="background" args={[NIGHT_SKY]} />
+        <fog attach="fog" args={[NIGHT_SKY, 600, 7000]} />
+        <NightSky />
+      </>
+    );
   return (
     <>
       <color attach="background" args={[HORIZON]} />

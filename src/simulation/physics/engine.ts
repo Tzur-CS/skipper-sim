@@ -1,4 +1,4 @@
-import { AERO, HYDRO, SAILS, SIM, YACHT } from '../config';
+import { AERO, HYDRO, MOTOR, SAILS, SIM, YACHT } from '../config';
 import { DEG, KNOT, approach, clamp, norm180, norm360, sign } from '../math';
 import { apparentWind, trueWindAngle } from '../wind/wind';
 import { dynamicPressure, optimalChordAngle, sailForce, trimQuality } from '../sails/aero';
@@ -15,6 +15,7 @@ import {
   type ActiveCrewTask,
   type CrewTaskKind,
 } from '../controls/crew';
+import { WorldSim } from '../world/worldSim';
 import type {
   ControlInput,
   CrewCommandId,
@@ -55,6 +56,8 @@ export class SimEngine {
   paused = false;
   /** Minimum steady headway in knots (represents motoring slowly; the engine itself is not simulated). */
   headwayAssistKt: number | null = null;
+  /** Harbour / traffic world of the current scenario, if any. */
+  world: WorldSim | null = null;
   private accumulator = 0;
   private uid = 0;
   private initial: InitialConditions = DEFAULT_CONDITIONS;
@@ -73,6 +76,7 @@ export class SimEngine {
   private stable = false;
   private lineDir: Record<LineId, number> = { mainsheet: 0, jibPort: 0, jibStarboard: 0, halyard: 0, furler: 0 };
   private lastRudderLogged = 0;
+  private hitTimer = 0;
   private listeners = new Set<(e: SimEvent) => void>();
 
   constructor(init: InitialConditions = DEFAULT_CONDITIONS) {
@@ -91,7 +95,7 @@ export class SimEngine {
     const s: SimState = {
       t: 0,
       wind: { ...init.wind },
-      boat: { x: 0, y: 0, heading: norm360(init.heading), speed: init.speed, rudder: init.rudder ?? 0, yawRate: 0, heel: 0 },
+      boat: { x: init.x ?? 0, y: init.y ?? 0, heading: norm360(init.heading), speed: init.speed, rudder: init.rudder ?? 0, yawRate: 0, heel: 0 },
       main: { hoist: init.mainHoist, sheet: init.mainsheet, boomAngle: 0, boomRate: 0, incidence: 0, luff: 0, trim: 0, backed: false },
       jib: {
         deployed: init.jibDeployed,
@@ -107,6 +111,9 @@ export class SimEngine {
       crew: { readyFor: null, preparing: 0, tasks: [], lastAck: null },
       derived: { twa, awa: aw.awa, aws: aw.aws, tack: tackFromTwa(twa), pointOfSail: pointOfSailFromTwa(twa), driveForce: 0, sideForce: 0 },
       input: emptyInput(),
+      motor: { fitted: !!init.motor, throttle: init.throttle ?? 0, target: init.throttle ?? 0 },
+      vessels: [],
+      zones: [],
     };
     const lee = -sign(aw.awa) || -1;
     if (init.autoTrim) {
@@ -138,6 +145,10 @@ export class SimEngine {
     this.stable = false;
     this.lineDir = { mainsheet: 0, jibPort: 0, jibStarboard: 0, halyard: 0, furler: 0 };
     this.lastRudderLogged = s.boat.rudder;
+    this.world = init.world ? new WorldSim(init.world, s.boat) : null;
+    s.vessels = this.world?.vessels ?? [];
+    s.zones = this.world?.zonesIn ?? [];
+    this.hitTimer = 0;
     this.computeForces(0); // populate derived values
     this.emit('reset');
   }
@@ -149,6 +160,19 @@ export class SimEngine {
   setLineInput(line: LineId, v: number): void {
     this.state.input[line] = clamp(v, -1, 1);
     if (v !== 0) this.cancelTasksOnLine(line);
+  }
+  /** Throttle lever: -1 astern .. 0 neutral .. 1 full ahead. */
+  setThrottle(v: number): void {
+    const m = this.state.motor;
+    if (!m.fitted) return;
+    const nv = Math.round(clamp(v, -1, 1) * 100) / 100;
+    if (nv === m.target) return;
+    m.target = nv;
+    this.emit('throttleChanged', { throttle: nv });
+  }
+  /** Record the student's answer to an identification question (used by scenario evaluation). */
+  answer(q: string, choice: string, correct: boolean): void {
+    this.emit('answer', { q, choice, correct });
   }
   setWind(trueFrom: number, trueSpeed: number): void {
     this.state.wind.trueFrom = norm360(trueFrom);
@@ -290,7 +314,11 @@ export class SimEngine {
     const vh = YACHT.hullSpeedKt * KNOT;
     let resist = HYDRO.k * v * Math.abs(v) * (1 + HYDRO.wave * Math.pow(Math.abs(v) / vh, HYDRO.waveExp)) + HYDRO.linear * v;
     if (v < 0) resist *= HYDRO.asternFactor;
-    const acc = (f.drive - resist) / YACHT.mass;
+    // Auxiliary engine: the throttle follows the lever; thrust is weaker astern.
+    const m = s.motor;
+    m.throttle = approach(m.throttle, m.target, 0.8 * dt);
+    const thrust = m.fitted ? m.throttle * (m.throttle >= 0 ? MOTOR.thrustAhead : MOTOR.thrustAstern) : 0;
+    const acc = (f.drive + thrust - resist) / YACHT.mass;
     const newV = clamp(v + acc * dt, -1.2 * KNOT, 12 * KNOT);
     s.boat.speed = newV / KNOT;
     if (this.headwayAssistKt !== null && s.boat.speed < this.headwayAssistKt) {
@@ -304,7 +332,9 @@ export class SimEngine {
     s.boat.heel += (heelTarget - s.boat.heel) * Math.min(1, dt / HYDRO.heelTau);
 
     // Yaw: rudder (speed dependent) + sail balance + weathercocking when stopped.
-    const rTarget = (newV * Math.tan(s.boat.rudder * DEG)) / YACHT.turnLength / DEG; // deg/s
+    // Propeller wash over the rudder gives some steering at low speed when going ahead.
+    const wash = m.fitted && m.throttle > 0 ? m.throttle * MOTOR.washSpeed * clamp(1 - Math.abs(newV) / 2.5, 0, 1) : 0;
+    const rTarget = ((newV + wash) * Math.tan(s.boat.rudder * DEG)) / YACHT.turnLength / DEG; // deg/s
     const slow = 1 - clamp(Math.abs(s.boat.speed) / 2, 0, 1);
     const windYaw = -HYDRO.windYawGain * Math.sin(2 * s.derived.twa * DEG) * slow * clamp(s.wind.trueSpeed / 12, 0, 2);
     const sailYaw = HYDRO.sailYawGain * f.yawMoment;
@@ -314,6 +344,23 @@ export class SimEngine {
     const h = s.boat.heading * DEG;
     s.boat.x += Math.sin(h) * newV * dt;
     s.boat.y += Math.cos(h) * newV * dt;
+
+    if (this.world) {
+      const { hit } = this.world.step(dt, s.t, s.boat, (type, data) => this.emit(type, data));
+      s.zones = this.world.zonesIn;
+      if (hit) {
+        // Contact: the boat is stopped and pushed back a little.
+        if (this.hitTimer <= 0) {
+          const back = Math.sign(s.boat.speed || 1) * 1.2;
+          s.boat.x -= Math.sin(h) * back;
+          s.boat.y -= Math.cos(h) * back;
+        }
+        s.boat.speed = 0;
+        s.boat.yawRate *= 0.3;
+        this.hitTimer = 0.5;
+      }
+      this.hitTimer -= dt;
+    }
 
     this.detectEvents(dt);
   }

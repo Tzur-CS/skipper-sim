@@ -11,6 +11,9 @@ import { InstrumentPanel } from '../instruments/InstrumentPanel';
 import { Compass } from '../instruments/Compass';
 import { TopBar } from '../cockpit/TopBar';
 import { FreeSailPanel } from '../cockpit/FreeSailPanel';
+import { ThrottleControl } from '../harbour/ThrottleControl';
+import { MiniChart } from '../harbour/MiniChart';
+import { QuestionCard } from '../harbour/QuestionCard';
 
 /**
  * Phone layout (landscape, short screens): everything sits on the edges so the sea and the boat
@@ -40,8 +43,18 @@ export function PhoneHud() {
 
       {/* Top-right: small compass. */}
       <div className="absolute top-[max(env(safe-area-inset-top),4px)] pointer-events-auto" style={{ right: insetR }}>
-        <Compass size={72} legend={false} />
+        <div className="flex flex-col items-end gap-1">
+          <Compass size={72} legend={false} />
+          <MiniChart size={104} />
+        </div>
       </div>
+
+      {/* Identification questions (night lights, right of way): left, under the instruments. */}
+      {session.kind === 'scenario' && panel === null && (
+        <div className="absolute pointer-events-auto" style={{ left: inset, top: 'calc(max(env(safe-area-inset-top),4px) + 64px)' }}>
+          <QuestionCard compact />
+        </div>
+      )}
 
       {/* Training card: top centre, narrow. */}
       {session.kind === 'scenario' && (
@@ -51,7 +64,8 @@ export function PhoneHud() {
       )}
 
       {/* Bottom-left: steering bar. */}
-      <div className="absolute bottom-[max(env(safe-area-inset-bottom),6px)] pointer-events-auto" style={{ left: inset }}>
+      <div className="absolute bottom-[max(env(safe-area-inset-bottom),6px)] pointer-events-auto flex flex-col items-start gap-1" style={{ left: inset }}>
+        <ThrottleControl compact />
         <SteerBar />
       </div>
 

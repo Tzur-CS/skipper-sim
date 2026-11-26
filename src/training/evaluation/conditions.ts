@@ -1,4 +1,4 @@
-import { sign } from '../../simulation/math';
+import { norm180, norm360, sign } from '../../simulation/math';
 import type { SimEvent, SimState } from '../../simulation/types';
 import type { Cond, Range } from '../scenarios/types';
 
@@ -11,6 +11,8 @@ export interface CondContext {
   stepT: number;
   /** Previous values for detecting line motion. */
   prev?: { hoist: number; deployed: number; mainsheet: number };
+  /** Own heading when the scenario started. */
+  initHeading?: number;
 }
 
 const inRange = (v: number, r: Range) => (r.min === undefined || v >= r.min) && (r.max === undefined || v <= r.max);
@@ -75,5 +77,21 @@ export function evalCond(c: Cond, ctx: CondContext): boolean {
   }
   if ('crewReady' in c) return s.crew.readyFor === c.crewReady && s.crew.preparing <= 0;
   if ('elapsed' in c) return inRange(s.t - ctx.startT, c.elapsed);
+  if ('inZone' in c) return s.zones.includes(c.inZone);
+  if ('range' in c) {
+    const v = s.vessels.find((x) => x.id === c.range.id);
+    return !!v && inRange(v.range, c.range.range);
+  }
+  if ('headingDelta' in c) return inRange(Math.abs(norm180(s.boat.heading - (ctx.initHeading ?? s.boat.heading))), c.headingDelta);
+  if ('headingChange' in c) return inRange(norm180(s.boat.heading - (ctx.initHeading ?? s.boat.heading)), c.headingChange);
+  if ('heading' in c) {
+    const lo = norm360(c.heading.min ?? 0);
+    const span = norm360((c.heading.max ?? 360) - lo) || 360;
+    return norm360(s.boat.heading - lo) <= span;
+  }
+  if ('throttle' in c) return s.motor.fitted && inRange(s.motor.target, c.throttle);
+  if ('answered' in c) {
+    return ctx.events.some((e) => e.type === 'answer' && e.t >= ctx.startT && e.data?.q === c.answered && (c.correct === undefined || e.data?.correct === c.correct));
+  }
   return false;
 }

@@ -45,7 +45,22 @@ export type Cond =
   | { event: SimEventType; data?: Record<string, string | number | boolean>; since?: 'start' | 'step' }
   | { command: CrewCommandId }
   | { crewReady: 'tack' | 'gybe' }
-  | { elapsed: Range };
+  | { elapsed: Range }
+  // harbour / traffic
+  /** Own boat is inside the world zone with this id. */
+  | { inZone: string }
+  /** Current distance (m) to another vessel. */
+  | { range: { id: string; range: Range } }
+  /** |heading change| (deg) from the heading at the start of the scenario. */
+  | { headingDelta: Range }
+  /** Signed heading change (deg, + = to starboard) from the heading at the start. */
+  | { headingChange: Range }
+  /** Absolute heading window (deg, clockwise from min to max; may wrap through north). */
+  | { heading: Range }
+  /** Throttle lever position (-1 astern .. 1 full ahead). */
+  | { throttle: Range }
+  /** The question with this id was answered (correctly, if `correct` is true). */
+  | { answered: string; correct?: boolean };
 
 export type Source = 'general' | 'school' | 'vessel';
 
@@ -106,6 +121,17 @@ export interface ScenarioVariant {
   label: L;
 }
 
+/** Identification question (e.g. "what do these lights show?"), shown when `showWhen` holds. */
+export interface Question {
+  id: string;
+  prompt: L;
+  options: Array<{ id: string; text: L }>;
+  correct: string;
+  /** Shown after answering (not in exam mode). */
+  explanation: L;
+  showWhen?: Cond;
+}
+
 export interface ScenarioDef {
   id: string;
   variant?: string;
@@ -119,6 +145,9 @@ export interface ScenarioDef {
   success: { cond: Cond; holdSeconds: number; requireAllSteps?: boolean };
   /** Scenario fails if not completed in this time (s). */
   timeLimit: number;
+  /** The scenario ends as a failure as soon as this holds (e.g. a collision). */
+  failOn?: { cond: Cond; message: L };
+  questions?: Question[];
   rules: Rule[];
   commonErrors: L[];
   /** Content review status; all MVP content needs validation by a qualified instructor. */

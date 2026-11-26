@@ -1,6 +1,6 @@
 import type { SimEngine } from '../../simulation/physics/engine';
 import type { SimEvent } from '../../simulation/types';
-import type { ErrorCategory, L, Rule, ScenarioDef, ScoreArea } from '../scenarios/types';
+import type { ErrorCategory, L, Question, Rule, ScenarioDef, ScoreArea } from '../scenarios/types';
 import { dataMatches, evalCond, type CondContext } from './conditions';
 import { computeScore, type AreaScores } from '../scoring/score';
 
@@ -25,7 +25,7 @@ export interface TrainingResult {
   variant?: string;
   mode: TrainingMode;
   success: boolean;
-  reason: 'completed' | 'timeout' | 'aborted';
+  reason: 'completed' | 'timeout' | 'aborted' | 'failed';
   score: number;
   areas: AreaScores;
   stepsDone: number;
@@ -34,6 +34,8 @@ export interface TrainingResult {
   recoveries: string[];
   timeline: Array<{ t: number; type: SimEvent['type']; data?: SimEvent['data']; heading: number; speed: number }>;
   duration: number;
+  /** Why the scenario was failed immediately (failOn), if it was. */
+  failMessage?: L;
   date: string;
 }
 
@@ -55,6 +57,12 @@ const TIMELINE_TYPES = new Set<SimEvent['type']>([
   'stabilized',
   'sheetEased',
   'sheetTrimmed',
+  'throttleChanged',
+  'collision',
+  'closeQuarters',
+  'vesselCpa',
+  'gateCrossed',
+  'answer',
 ]);
 
 /**
@@ -79,6 +87,9 @@ export class ScenarioEvaluator {
   private seenEventIdx = 0;
   private prev: CondContext['prev'];
   private onError?: (e: DetectedError) => void;
+  private initHeading: number;
+  /** Reason shown when `failOn` ended the scenario. */
+  failMessage: L | null = null;
 
   constructor(def: ScenarioDef, engine: SimEngine, mode: TrainingMode, onError?: (e: DetectedError) => void) {
     this.def = def;
@@ -89,10 +100,11 @@ export class ScenarioEvaluator {
     this.stepT = this.startT;
     this.stepStatus = def.steps.map((_, i) => (i === 0 ? 'active' : 'pending'));
     this.seenEventIdx = engine.events.length;
+    this.initHeading = engine.state.boat.heading;
   }
 
   private ctx(): CondContext {
-    return { s: this.engine.state, events: this.engine.events, startT: this.startT, stepT: this.stepT, prev: this.prev };
+    return { s: this.engine.state, events: this.engine.events, startT: this.startT, stepT: this.stepT, prev: this.prev, initHeading: this.initHeading };
   }
 
   private ruleActive(r: Rule): boolean {
@@ -182,7 +194,15 @@ export class ScenarioEvaluator {
       }
     }
 
-    // 4. Physical success condition.
+    // 4. Immediate failure (collision, grounding...).
+    if (this.def.failOn && evalCond(this.def.failOn.cond, ctx)) {
+      this.failMessage = this.def.failOn.message;
+      this.finish('failed');
+      this.prev = { hoist: s.main.hoist, deployed: s.jib.deployed, mainsheet: s.main.sheet };
+      return;
+    }
+
+    // 5. Physical success condition.
     const stepsOk = !this.def.success.requireAllSteps || this.currentStep >= this.def.steps.length;
     if (stepsOk && evalCond(this.def.success.cond, ctx)) {
       this.successHold += dt;
@@ -201,6 +221,26 @@ export class ScenarioEvaluator {
     this.stepHold = 0;
     this.stepT = this.engine.state.t;
     if (this.currentStep < this.def.steps.length) this.stepStatus[this.currentStep] = 'active';
+  }
+
+  /** The first unanswered identification question whose `showWhen` holds now. */
+  activeQuestion(): Question | null {
+    if (this.finished) return null;
+    const ctx = this.ctx();
+    for (const q of this.def.questions ?? []) {
+      if (evalCond({ answered: q.id }, ctx)) continue;
+      if (!q.showWhen || evalCond(q.showWhen, ctx)) return q;
+    }
+    return null;
+  }
+
+  /** Record an answer (first answer only). Returns whether it was correct. */
+  answer(qid: string, choice: string): boolean {
+    const q = this.def.questions?.find((x) => x.id === qid);
+    if (!q || evalCond({ answered: qid }, this.ctx())) return false;
+    const correct = q.correct === choice;
+    this.engine.answer(qid, choice, correct);
+    return correct;
   }
 
   get successProgress(): number {
@@ -249,6 +289,7 @@ export class ScenarioEvaluator {
       recoveries,
       timeline,
       duration: Math.round(this.elapsed),
+      failMessage: this.failMessage ?? undefined,
       date: new Date().toISOString(),
     };
     return this.finished;

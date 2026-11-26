@@ -4,7 +4,8 @@ import { translate } from '../i18n/translations';
 import type { TrainingMode, TrainingResult } from '../training/evaluation/evaluator';
 import { load, loadArray, save } from './storage';
 
-export type Screen = 'home' | 'select' | 'sim' | 'results' | 'settings';
+export type Screen = 'home' | 'select' | 'sim' | 'results' | 'settings' | 'learn' | 'progress';
+export type LearnTopic = 'licence' | 'terms' | 'links';
 export type CameraMode = 'helm' | 'chase' | 'top' | 'winches';
 
 export interface Settings {
@@ -24,6 +25,10 @@ interface AppState {
   history: TrainingResult[];
   camera: CameraMode;
   paused: boolean;
+  learnTopic: LearnTopic;
+  openLearn: (t: LearnTopic) => void;
+  progressScenario: string;
+  openProgress: (scenarioId: string) => void;
   go: (s: Screen) => void;
   setSettings: (p: Partial<Settings>) => void;
   startSession: (s: Session) => void;
@@ -46,6 +51,10 @@ export const useApp = create<AppState>((set, get) => ({
   history: loadArray<TrainingResult>(HISTORY_KEY),
   camera: 'helm',
   paused: false,
+  learnTopic: 'licence',
+  openLearn: (learnTopic) => set({ learnTopic, screen: 'learn' }),
+  progressScenario: '',
+  openProgress: (progressScenario) => set({ progressScenario, screen: 'progress' }),
   go: (screen) => set({ screen }),
   setSettings: (p) => {
     const settings = { ...get().settings, ...p };

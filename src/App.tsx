@@ -5,6 +5,8 @@ import { ScenarioSelect } from './screens/ScenarioSelect';
 import { SimScreen } from './screens/SimScreen';
 import { Results } from './screens/Results';
 import { Settings } from './screens/Settings';
+import { Learn } from './screens/Learn';
+import { ScenarioProgress } from './screens/ScenarioProgress';
 
 export function App() {
   const screen = useApp((s) => s.screen);
@@ -24,5 +26,9 @@ export function App() {
       return <Results />;
     case 'settings':
       return <Settings />;
+    case 'learn':
+      return <Learn />;
+    case 'progress':
+      return <ScenarioProgress />;
   }
 }

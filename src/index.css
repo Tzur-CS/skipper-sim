@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Landscape phone: short and wide. */
+@custom-variant lp (@media (orientation: landscape) and (max-height: 520px));
+
 @theme {
   --color-sea-950: #06121d;
   --color-sea-900: #0b1d2e;

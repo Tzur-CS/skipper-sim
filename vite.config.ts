@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
               lang: 'he',
               dir: 'rtl',
               display: 'fullscreen',
-              orientation: 'landscape',
+              orientation: 'any',
               background_color: '#0b1d2e',
               theme_color: '#0b1d2e',
               start_url: './',

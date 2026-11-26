@@ -86,6 +86,26 @@ test('home screen in Hebrew RTL, start free sailing in one tap', async ({ page }
   expect(errors).toEqual([]);
 });
 
+test('home page: purpose, learning pages, collapsible progress', async ({ page }, info) => {
+  const errors = collectErrors(page);
+  await page.goto('/');
+  await expect(page.getByTestId('home-purpose')).toContainText('משיט 30');
+  await expect(page.getByTestId('progress-list')).toHaveCount(0);
+  await page.getByTestId('progress-toggle').click();
+  await expect(page.getByTestId('progress-list')).toBeVisible();
+  await page.getByTestId('progress-tack').click();
+  await expect(page.getByTestId('scenario-progress')).toContainText('סיבוב');
+  await page.getByTestId('progress-back').click();
+  await page.getByTestId('learn-terms').click();
+  await expect(page.getByTestId('learn')).toContainText('גבית מלאה');
+  await page.getByTestId('learn-tab-links').click();
+  await expect(page.getByTestId('links').locator('a[href*="gov.il"]')).toHaveCount(1);
+  await page.screenshot({ path: `screenshots/e2e-${info.project.name}-links.png` });
+  await page.getByTestId('learn-back').click();
+  await expect(page.getByTestId('home')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('guided tack scenario: commands, physical tack, results screen', async ({ page }, info) => {
   const errors = collectErrors(page);
   await page.goto('/');

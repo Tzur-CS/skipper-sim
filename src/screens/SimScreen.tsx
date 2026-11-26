@@ -12,6 +12,9 @@ import { useApp, useT } from '../store/appStore';
 import { startRuntime } from '../store/runtime';
 import { clamp } from '../simulation/math';
 import { PhoneHud } from '../components/compact/PhoneHud';
+import { ThrottleControl } from '../components/harbour/ThrottleControl';
+import { MiniChart } from '../components/harbour/MiniChart';
+import { QuestionCard } from '../components/harbour/QuestionCard';
 
 /** Short landscape screens (phones) get the edge-docked phone HUD; tablets keep the full panels. */
 function useCompact(): boolean {
@@ -96,11 +99,16 @@ export function SimScreen() {
         </div>
         <div className="absolute top-[max(env(safe-area-inset-top),6px)] right-[max(env(safe-area-inset-right),8px)] pointer-events-auto flex flex-col items-end gap-5">
           <Compass />
+          <MiniChart size={160} />
         </div>
         <div className="absolute top-[max(env(safe-area-inset-top),6px)] left-[calc(max(env(safe-area-inset-left),6px)+270px)] pointer-events-auto">
           {session.kind === 'scenario' ? <TrainingOverlay /> : camera !== 'winches' && <FreeSailPanel />}
+          <div className="mt-1">
+            <QuestionCard />
+          </div>
         </div>
-        <div className="absolute bottom-[max(env(safe-area-inset-bottom),8px)] left-[max(env(safe-area-inset-left),8px)] pointer-events-auto">
+        <div className="absolute bottom-[max(env(safe-area-inset-bottom),8px)] left-[max(env(safe-area-inset-left),8px)] pointer-events-auto flex flex-col items-start gap-1">
+          <ThrottleControl />
           <Helm />
         </div>
         <div className="absolute bottom-[max(env(safe-area-inset-bottom),8px)] right-[max(env(safe-area-inset-right),8px)] pointer-events-auto">

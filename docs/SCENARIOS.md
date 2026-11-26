@@ -58,3 +58,18 @@ failures are capped at 59.
 ## Modes
 Guided: objective + step hints + highlighted controls + immediate error feedback.
 Practice: objective + immediate error feedback. Exam: objective only; feedback only in results.
+
+## Harbour, traffic and night scenarios
+`initial` may also set `x`, `y` (start position), `motor`/`throttle` (auxiliary engine) and
+`world`: `{ time: 'day' | 'night', marina?, swimZone?, vessels: VesselDef[], zones?, gates? }`
+(`src/simulation/world/types.ts`). The world adds the Gordon marina structures, zones (`marina`,
+`fairwayEast/West`, `entranceEast/West`, `approach`, `open`, `berth`, `swim`) and the entrance gate.
+Other vessels follow paths, wander (dinghies), re-aim to create a collision course (`intercept`),
+give way when the range closes (`giveWay`) or keep station alongside like a police boat (`follow`).
+
+Extra conditions: `inZone`, `range {id, range}`, `headingDelta`, `headingChange` (signed), `heading`
+(window, wraps through north), `throttle`, `answered {id, correct?}`.
+Extra events: `throttleChanged`, `collision`, `closeQuarters`, `vesselClose`, `vesselCpa`
+(`{id, dist, astern, side}`), `zoneEntered/Exited`, `gateCrossed {id, dir}`, `answer`.
+`failOn` ends the drill at once (collision). `questions` are identification questions shown when
+`showWhen` holds; answers are scored by rules like any other event.

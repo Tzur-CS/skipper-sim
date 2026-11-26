@@ -22,6 +22,10 @@ function eventText(e: TrainingResult['timeline'][number], t: (k: string) => stri
   if (e.type === 'pointOfSailChanged' && e.data?.to) s += ` → ${t(`pos.${e.data.to}`)}`;
   if ((e.type === 'sheetEased' || e.type === 'sheetTrimmed') && e.data?.line) s += ` (${t(e.data.line === 'jibPort' ? 'jibPortSheet' : e.data.line === 'jibStarboard' ? 'jibStbdSheet' : String(e.data.line))})`;
   if (e.data?.phase) s += ` (${t(`${e.data.phase}_`)})`;
+  if (e.type === 'gateCrossed') s += ` (${t(e.data?.dir === 'in' ? 'gateIn' : 'gateOut')})`;
+  if ((e.type === 'vesselCpa' || e.type === 'closeQuarters' || e.type === 'collision') && e.data?.kind) s += `: ${t(`vessel.${e.data.kind}`)}${typeof e.data.dist === 'number' ? ` ${e.data.dist} m` : ''}`;
+  if (e.type === 'answer') s += e.data?.correct ? ' ✓' : ' ✗';
+  if (e.type === 'throttleChanged' && typeof e.data?.throttle === 'number') s += `: ${Math.round(e.data.throttle * 100)}%`;
   return s;
 }
 
@@ -53,6 +57,7 @@ export function Results() {
                   {t('overallScore')} · {t(`mode${r.mode[0].toUpperCase()}${r.mode.slice(1)}`)} · {t('duration')} {r.duration}
                   {t('seconds')} · {t('steps')} {r.stepsDone}/{r.stepsTotal}
                 </div>
+                {r.failMessage && <div className="text-sm text-red-300 font-semibold" data-testid="fail-message">{r.failMessage[lang]}</div>}
               </div>
             </div>
             <div className="flex flex-col gap-1.5 mt-3">

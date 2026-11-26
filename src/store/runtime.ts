@@ -31,6 +31,7 @@ interface Runtime {
 }
 
 let freeWind = { ...FREE_SAIL_START.wind };
+let worldKey = 0;
 
 /** Change the wind in free sailing (kept for the next reset). */
 export function setFreeWind(trueFrom: number, trueSpeed: number): void {
@@ -50,6 +51,8 @@ function onError(err: DetectedError) {
 engine.onEvent((e) => {
   if (e.type === 'uncontrolledGybe') useHud.setState({ warning: { key: 'uncontrolledGybe', t: e.t } });
   if (e.type === 'inIrons' && runtime.evaluator?.mode !== 'exam') useHud.setState({ warning: { key: 'inIrons', t: e.t } });
+  if (e.type === 'collision') useHud.setState({ warning: { key: 'collision', t: e.t } });
+  if (e.type === 'answer') useHud.setState({ lastAnswer: { q: String(e.data?.q), correct: !!e.data?.correct, t: e.t } });
 });
 
 export function startRuntime(session: Session): void {
@@ -67,7 +70,8 @@ export function startRuntime(session: Session): void {
     engine.reset({ ...FREE_SAIL_START, wind: { ...freeWind } });
   }
   engine.paused = false;
-  useHud.setState({ ...initialHud });
+  worldKey++;
+  useHud.setState({ ...initialHud, worldKey, timeOfDay: engine.world?.def.time ?? 'day' });
   syncHud();
 }
 
@@ -142,6 +146,10 @@ export function syncHud(): void {
     stepStatus: ev ? [...ev.stepStatus] : [],
     successProgress: ev?.successProgress ?? 0,
     elapsed: ev?.elapsed ?? s.t,
+    motorFitted: s.motor.fitted,
+    throttle: s.motor.throttle,
+    throttleTarget: s.motor.target,
+    question: ev?.activeQuestion()?.id ?? null,
   });
 }
 

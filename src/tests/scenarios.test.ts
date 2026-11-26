@@ -3,8 +3,8 @@ import { getScenario, SCENARIOS } from '../training/scenarios';
 import { setup } from './helpers';
 
 describe('scenario catalogue', () => {
-  it('defines six data-driven scenarios, all flagged for instructor review', () => {
-    expect(SCENARIOS).toHaveLength(6);
+  it('defines eleven data-driven scenarios, all flagged for instructor review', () => {
+    expect(SCENARIOS).toHaveLength(11);
     for (const s of SCENARIOS) {
       const def = s.build(s.variants?.[0].id);
       expect(def.steps.length).toBeGreaterThan(2);

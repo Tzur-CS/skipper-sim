@@ -136,3 +136,13 @@ export const POINTS_OF_SAIL: ReadonlyArray<{ id: import('./types').PointOfSail; 
   { id: 'broadReach', max: 155 },
   { id: 'running', max: 180.01 },
 ];
+
+/** Auxiliary engine (inboard diesel, ~30 hp). Thrust in N; ~3 kn at 0.22, ~4.8 kn at 0.45, ~6.5 kn full. */
+export const MOTOR = {
+  thrustAhead: 2300,
+  thrustAstern: 1400,
+  /** Equivalent flow speed (m/s) of propeller wash over the rudder at full throttle, standing still. */
+  washSpeed: 2.2,
+  /** Lever positions offered in the UI. */
+  levels: [-0.3, 0, 0.22, 0.45, 1] as const,
+};

@@ -51,7 +51,8 @@ export function optimalLineValue(s: SimState, line: LineId): number {
 }
 
 export function workingJibSheet(s: SimState): { oldLine: LineId; newLine: LineId } {
-  const portIsWorking = s.jib.portSheet >= s.jib.starboardSheet;
+  // With both sheets slack (e.g. running), the side the jib is lying on decides.
+  const portIsWorking = s.jib.portSheet > s.jib.starboardSheet || (s.jib.portSheet === s.jib.starboardSheet && s.jib.angle <= 0);
   return portIsWorking
     ? { oldLine: 'jibPort', newLine: 'jibStarboard' }
     : { oldLine: 'jibStarboard', newLine: 'jibPort' };

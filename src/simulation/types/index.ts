@@ -79,9 +79,26 @@ export interface DerivedState {
   sideForce: number;
 }
 
+/** Manoeuvres the crew can be told to prepare for ("היכון ל..."). */
+export type CrewManoeuvre = 'tack' | 'gybe' | 'unfurl';
+/** Crew stations in the roll call: jib sheet sides, mainsheet, furling line. */
+export type CrewStation = 'port' | 'starboard' | 'main' | 'furler';
+
 export type CrewCommandId =
   | 'prepareTack'
+  /** Readiness roll call before a tack: "צד ימין מוכן?" / "צד שמאל מוכן?". */
+  | 'checkStarboardReady'
+  | 'checkPortReady'
   | 'tack'
+  /** Gybe roll call: "ראשי מוכן?" (mainsheet trimmer). */
+  | 'checkMainReady'
+  /** "דד רן": called on a dead run as the jib collapses behind the main, just before the boom comes across. */
+  | 'deadRun'
+  /** "היכון לפתיחת חלוץ" and its roll call "גולל מוכן?" (furling line). */
+  | 'prepareUnfurl'
+  | 'checkFurlerReady'
+  /** "העבר חלוץ!": one side releases the old jib sheet, the other pulls the new one. */
+  | 'switchJib'
   | 'prepareGybe'
   | 'gybe'
   | 'releaseJibStarboard'
@@ -111,7 +128,9 @@ export interface CrewTask {
 }
 
 export interface CrewState {
-  readyFor: 'tack' | 'gybe' | null;
+  readyFor: CrewManoeuvre | null;
+  /** Which crew stations answered "מוכן" to the skipper's roll call since the last "היכון". */
+  sidesReady: Record<CrewStation, boolean>;
   /** Seconds remaining until crew finishes preparing. */
   preparing: number;
   tasks: CrewTask[];
@@ -132,6 +151,8 @@ export interface ControlInput {
 
 export type SimEventType =
   | 'crewCommand'
+  /** A crew side answered the skipper's roll call (data: side, ready). */
+  | 'crewReport'
   | 'rudderChanged'
   | 'sheetEased'
   | 'sheetTrimmed'

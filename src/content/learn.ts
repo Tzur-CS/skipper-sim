@@ -120,15 +120,15 @@ export const MANOEUVRES: Section[] = [
   {
     title: t('סיבוב (Tack)', 'Tacking'),
     body: t(
-      'מעבירים את החרטום דרך הרוח, מצד לצד. החלוץ עובר צד: משחררים את השוט הישן ומותחים את החדש. משמשים בו כדי להתקדם נגד הרוח בזיגזג.',
-      'Turn the bow through the wind from one side to the other. The jib changes sides: release the old sheet and trim the new one. Used to make progress upwind in a zigzag.',
+      'מעבירים את החרטום דרך הרוח, מצד לצד. סדר הפקודות: "הצוות היכון לסיבוב", "צד ימין מוכן?" – "מוכן", "צד שמאל מוכן?" – "מוכן", "סיבוב" ועולים לרוח. מחכים שהחלוץ יקרוס מול הרוח, ואז "העבר חלוץ!" – צד אחד משחרר והשני מושך. מותחים את החלוץ לרמה הנכונה ומתייצבים בקדמית. משמשים בסיבוב כדי להתקדם נגד הרוח בזיגזג.',
+      'Turn the bow through the wind from one side to the other. Calls: "Crew, ready about", "Starboard side ready?" – "Ready", "Port side ready?" – "Ready", "Tacking" and head up. Wait for the jib to collapse head to wind, then "Switch jib!" – one side releases, the other pulls. Trim the jib to the right tension and settle close-hauled. Used to make progress upwind in a zigzag.',
     ),
   },
   {
     title: t('מהפך (Gybe)', 'Gybing'),
     body: t(
-      'מעבירים את הירכתיים דרך הרוח, כשהרוח מאחור. הבום עובר צד בכוח, ולכן ממרכזים את הראשי לפני ומשחררים אחרי. מהפך לא מבוקר הוא מצב מסוכן.',
-      'Turn the stern through the wind, with the wind behind. The boom swings across hard, so centre the main first and ease it after. An uncontrolled gybe is dangerous.',
+      'מעבירים את הירכתיים דרך הרוח, כשהרוח מאחור. סדר הפקודות: "היכון למהפך", "ימין מוכן?" "שמאל מוכן?" "ראשי מוכן?" – "מוכן", מותחים את הראשי למרכז, "מהפך" ומסובבים את ההגה למורד הרוח. כשהחלוץ קורס – "דד רן", ואז "העבר חלוץ". בסוף מותחים את החלוץ ומשחררים את הראשי. מהפך לא מבוקר הוא מצב מסוכן.',
+      'Turn the stern through the wind, with the wind behind. Calls: "Prepare to gybe", "Starboard ready?" "Port ready?" "Main ready?" – "Ready", pull the main in to the centre, "Gybing" and turn downwind. When the jib collapses – "Dead run", then "Switch jib". Finally trim the jib and ease the main. An uncontrolled gybe is dangerous.',
     ),
   },
   {

@@ -35,6 +35,8 @@ export function evalCond(c: Cond, ctx: CondContext): boolean {
   if ('awaAbs' in c) return inRange(Math.abs(s.derived.awa), c.awaAbs);
   if ('speed' in c) return inRange(s.boat.speed, c.speed);
   if ('heelAbs' in c) return inRange(Math.abs(s.boat.heel), c.heelAbs);
+  if ('gust' in c) return inRange(s.derived.gust, c.gust);
+  if ('weatherHelmAbs' in c) return inRange(Math.abs(s.derived.weatherHelm), c.weatherHelmAbs);
   if ('yawRateAbs' in c) return inRange(Math.abs(s.boat.yawRate), c.yawRateAbs);
   if ('rudderAbs' in c) return inRange(Math.abs(s.boat.rudder), c.rudderAbs);
   if ('mainHoist' in c) return inRange(s.main.hoist, c.mainHoist);

@@ -12,6 +12,7 @@ import { buildEnterMarina, type EnterVariant } from './enterMarina';
 import { buildRightOfWay, type RowVariant } from './rightOfWay';
 import { buildCoastTraffic } from './coastTraffic';
 import { buildNightLights } from './nightLights';
+import { buildWeatherHelm } from './weatherHelm';
 
 const dirVariants = [
   { id: 'starboardToPort', label: t('ממפנה ימני לשמאלי', 'Starboard → port') },
@@ -40,6 +41,7 @@ export const SCENARIOS: ScenarioCatalogEntry[] = [
   { id: 'rightOfWay', order: 9, title: t('חוקי דרך במפרש', 'Right of way under sail'), summary: t('מפנה ימני מול שמאלי: מפנה ושומר דרך', 'Starboard vs port tack: give way or stand on'), variants: rowVariants, build: (v) => buildRightOfWay((v as RowVariant) ?? 'giveWay') },
   { id: 'coastTraffic', order: 10, title: t('תנועה ליד החוף', 'Coastal traffic'), summary: t('גלשנים, קייט, דייג, משטרה וסירות ילדים', 'Windsurfers, kites, fishing, police, dinghies'), build: () => buildCoastTraffic() },
   { id: 'nightLights', order: 11, title: t('ניווט לילי', 'Night navigation'), summary: t('זיהוי אורות ניווט ופעולה נכונה', 'Identify navigation lights and act'), build: () => buildNightLights() },
+  { id: 'weatherHelm', order: 12, title: t('קדמית ברוח משתנה', 'Close-hauled in shifty wind'), summary: t('נטייה לרוח, משבים ותיקוני הגה קטנים', 'Weather helm, gusts and small helm corrections'), build: () => buildWeatherHelm() },
 ];
 
 export function getScenario(id: string, variant?: string) {

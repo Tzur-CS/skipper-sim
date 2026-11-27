@@ -26,6 +26,10 @@ export type Cond =
   | { speed: Range }
   | { heelAbs: Range }
   | { yawRateAbs: Range }
+  /** True wind above the mean (kt): > 0 in a gust, < 0 in a lull. */
+  | { gust: Range }
+  /** Weather helm magnitude (deg/s^2). */
+  | { weatherHelmAbs: Range }
   | { rudderAbs: Range }
   | { mainHoist: Range }
   | { mainsheet: Range }

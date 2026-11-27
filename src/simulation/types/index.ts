@@ -11,6 +11,10 @@ export interface WindState {
   trueFrom: number;
   /** True wind speed, knots. */
   trueSpeed: number;
+  /** Gust strength (kt above the mean wind at the peak of a puff). 0 / missing = steady wind. */
+  gusts?: number;
+  /** Wind shift amplitude (deg either side of the mean direction). 0 / missing = steady direction. */
+  shifts?: number;
 }
 
 export interface MainsailState {
@@ -76,6 +80,15 @@ export interface DerivedState {
   pointOfSail: PointOfSail;
   /** Driving force (N) and heeling force (N) for instrumentation/education. */
   driveForce: number;
+  /**
+   * Weather helm: yaw acceleration (deg/s^2) the boat gets from heeling, signed toward the wind
+   * (+ = bow pulled to starboard). It grows with heel, so a gust makes the boat round up.
+   */
+  weatherHelm: number;
+  /** Current gust: true wind speed above the mean wind (kt). */
+  gust: number;
+  /** Current wind shift from the mean direction (deg, + = veered / clockwise). */
+  shift: number;
   sideForce: number;
 }
 

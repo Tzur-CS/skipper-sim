@@ -1,5 +1,5 @@
 import { SimEngine, DEFAULT_CONDITIONS } from '../simulation/physics/engine';
-import type { InitialConditions } from '../simulation/types';
+import type { InitialConditions, WindState } from '../simulation/types';
 import { ScenarioEvaluator, type DetectedError } from '../training/evaluation/evaluator';
 import { getScenario } from '../training/scenarios';
 import type { ScenarioDef } from '../training/scenarios/types';
@@ -30,13 +30,20 @@ interface Runtime {
   session: Session | null;
 }
 
-let freeWind = { ...FREE_SAIL_START.wind };
+let freeWind: WindState = { ...FREE_SAIL_START.wind };
 let worldKey = 0;
 
 /** Change the wind in free sailing (kept for the next reset). */
 export function setFreeWind(trueFrom: number, trueSpeed: number): void {
-  freeWind = { trueFrom, trueSpeed };
+  freeWind = { ...freeWind, trueFrom, trueSpeed };
   engine.setWind(trueFrom, trueSpeed);
+  syncHud();
+}
+
+/** Gusts (kt) and wind shifts (deg) in free sailing (kept for the next reset). */
+export function setFreeWindVariation(gusts: number, shifts: number): void {
+  freeWind = { ...freeWind, gusts, shifts };
+  engine.setWindVariation(gusts, shifts);
   syncHud();
 }
 
@@ -127,6 +134,9 @@ export function syncHud(): void {
     tack: s.derived.tack,
     pos: s.derived.pointOfSail,
     heel: s.boat.heel,
+    weatherHelm: s.derived.weatherHelm,
+    gust: s.derived.gust,
+    windMean: engine.meanWind,
     rudder: s.boat.rudder,
     helm: s.input.helm,
     mainHoist: s.main.hoist,

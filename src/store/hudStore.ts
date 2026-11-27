@@ -16,6 +16,12 @@ export interface Hud {
   tack: Tack;
   pos: PointOfSail;
   heel: number;
+  /** Weather helm, deg/s^2 (+ = bow pulled to starboard). */
+  weatherHelm: number;
+  /** True wind above the mean (kt): gust > 0, lull < 0. */
+  gust: number;
+  /** Mean wind and variation (free sailing sliders). */
+  windMean: { trueFrom: number; trueSpeed: number; gusts: number; shifts: number };
   rudder: number;
   helm: number;
   mainHoist: number;
@@ -52,7 +58,7 @@ export interface Hud {
 }
 
 export const initialHud: Hud = {
-  t: 0, speed: 0, heading: 0, tws: 0, twd: 0, aws: 0, awa: 0, twa: 0, tack: 'starboard', pos: 'closeHauled', heel: 0, rudder: 0, helm: 0,
+  t: 0, speed: 0, heading: 0, tws: 0, twd: 0, aws: 0, awa: 0, twa: 0, tack: 'starboard', pos: 'closeHauled', heel: 0, weatherHelm: 0, gust: 0, windMean: { trueFrom: 0, trueSpeed: 0, gusts: 0, shifts: 0 }, rudder: 0, helm: 0,
   mainHoist: 0, mainsheet: 0, mainLuff: 0, mainTrim: 0, mainIncidence: 0, jibDeployed: 0, jibPort: 0, jibStbd: 0, jibLuff: 0, jibTrim: 0, jibIncidence: 0, jibBacked: false,
   crew: { readyFor: null, preparing: 0, lastAck: null, busy: 0 },
   currentStep: 0, stepStatus: [], successProgress: 0, elapsed: 0, warning: null, toast: null,

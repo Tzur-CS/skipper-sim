@@ -270,7 +270,7 @@ function SteerBar() {
 }
 
 const CREW_IDS = new Set<string>([
-  'prepareTack', 'tack', 'prepareGybe', 'gybe', 'hoistMain', 'lowerMain', 'trimMain', 'easeMain', 'centerMain',
+  'prepareTack', 'checkStarboardReady', 'checkPortReady', 'tack', 'switchJib', 'checkMainReady', 'deadRun', 'prepareUnfurl', 'checkFurlerReady', 'prepareGybe', 'gybe', 'hoistMain', 'lowerMain', 'trimMain', 'easeMain', 'centerMain',
   'releaseJibPort', 'trimJibPort', 'trimJibStarboard', 'releaseJibStarboard', 'unfurlJib', 'furlJib',
 ]);
 
@@ -382,6 +382,15 @@ function CrewDrawer({ onClose }: { onClose: () => void }) {
             <Cmd id="prepareGybe" onDone={onClose} className={b} />
             <Cmd id="gybe" onDone={onClose} className={b} />
           </div>
+          <div className="grid grid-cols-3 gap-1" dir="ltr">
+            <Cmd id="checkPortReady" tone="port" onDone={onClose} className={b} />
+            <Cmd id="switchJib" onDone={onClose} className={b} />
+            <Cmd id="checkStarboardReady" tone="stbd" onDone={onClose} className={b} />
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            <Cmd id="checkMainReady" onDone={onClose} className={b} />
+            <Cmd id="deadRun" onDone={onClose} className={b} />
+          </div>
           <div>
             <div className={head}>{t('mainsail')}</div>
             <div className="grid grid-cols-5 gap-1">
@@ -404,7 +413,9 @@ function CrewDrawer({ onClose }: { onClose: () => void }) {
               <Cmd id="trimJibStarboard" label={t('trimIn')} tone="stbd" onDone={onClose} className={b} />
               <Cmd id="releaseJibStarboard" label={t('ease')} tone="stbd" onDone={onClose} className={b} />
             </div>
-            <div className="grid grid-cols-2 gap-1 mt-1">
+            <div className="grid grid-cols-4 gap-1 mt-1">
+              <Cmd id="prepareUnfurl" onDone={onClose} className={b} />
+              <Cmd id="checkFurlerReady" onDone={onClose} className={b} />
               <Cmd id="unfurlJib" label={t('unfurl')} onDone={onClose} className={b} />
               <Cmd id="furlJib" label={t('furl')} onDone={onClose} className={b} />
             </div>

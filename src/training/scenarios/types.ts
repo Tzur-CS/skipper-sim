@@ -44,7 +44,7 @@ export type Cond =
   | { line: 'halyard' | 'furler' | 'mainsheet'; moving: 'up' | 'down' }
   | { event: SimEventType; data?: Record<string, string | number | boolean>; since?: 'start' | 'step' }
   | { command: CrewCommandId }
-  | { crewReady: 'tack' | 'gybe' }
+  | { crewReady: 'tack' | 'gybe' | 'unfurl' }
   | { elapsed: Range }
   // harbour / traffic
   /** Own boat is inside the world zone with this id. */

@@ -18,10 +18,10 @@ schools) or `vessel` (depends on the boat's equipment).
 |---|---|---|
 | Raise main | Head to wind, ease mainsheet, hoist, bear away and trim | general |
 | Raise main | Headway assist stands in for motoring; engine use is not taught | vessel |
-| Open jib | Unfurl, trim the leeward sheet, leave windward slack | general / vessel (furler) |
-| Tack | "היכון לסיבוב" → wait for "מוכן" → "סיבוב" → turn; crew releases old sheet as the bow nears the wind and trims the new one | school (wording/order) |
+| Open jib | "היכון לפתיחת חלוץ" → "גולל מוכן?" / working side ("שמאל"/"ימין") "מוכן" → "פתח חלוץ" (furler eases under control, the sheet side pulls) → check trim on the telltales. Sequence given by the project owner | school (wording/order) / vessel (furler) |
+| Tack | "הצוות היכון לסיבוב" → "צד ימין מוכן?" "מוכן" → "צד שמאל מוכן?" "מוכן" → "סיבוב" (head up) → wait for the jib to collapse as the bow crosses the wind → "העבר חלוץ!" (one side releases, the other pulls) → trim the jib to the right tension → settle close-hauled. Sequence given by the project owner; calling "העבר חלוץ" before the jib collapses is penalised | school (wording/order) |
 | Tack | Penalties for not preparing crew (20) and not calling the tack (10) | school |
-| Gybe | "היכון למהפך" → centre main → bear away → boom crosses → ease, move jib → counter-steer | general (order) / school (wording) |
+| Gybe | "היכון למהפך" → "ימין מוכן" / "שמאל מוכן" / "ראשי מוכן" → centre the main → "מהפך" (helm downwind) → "דד רן" when the jib collapses → "העבר חלוץ" → trim the jib and ease the main → counter-steer. Sequence given by the project owner; dead run is detected from the wind angle (wind shadow not modelled) | school (wording/order) |
 | Points of sail | Trim in when heading up, ease when bearing away | general |
 | Lower sails | Ease jib sheet, furl, head to wind, ease main, lower | general |
 | Lower sails | Furl jib before lowering main (5-point "preference" penalty) | school |

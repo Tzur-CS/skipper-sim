@@ -19,6 +19,8 @@ import { WorldSim } from '../world/worldSim';
 import type {
   ControlInput,
   CrewCommandId,
+  CrewManoeuvre,
+  CrewStation,
   InitialConditions,
   LineId,
   PointOfSail,
@@ -27,6 +29,8 @@ import type {
   SimState,
   Tack,
 } from '../types';
+
+const noStations = (): Record<CrewStation, boolean> => ({ port: false, starboard: false, main: false, furler: false });
 
 export const LINES: LineId[] = ['mainsheet', 'jibPort', 'jibStarboard', 'halyard', 'furler'];
 
@@ -108,7 +112,7 @@ export class SimEngine {
         backed: false,
         activeSheet: null,
       },
-      crew: { readyFor: null, preparing: 0, tasks: [], lastAck: null },
+      crew: { readyFor: null, sidesReady: noStations(), preparing: 0, tasks: [], lastAck: null },
       derived: { twa, awa: aw.awa, aws: aw.aws, tack: tackFromTwa(twa), pointOfSail: pointOfSailFromTwa(twa), driveForce: 0, sideForce: 0 },
       input: emptyInput(),
       motor: { fitted: !!init.motor, throttle: init.throttle ?? 0, target: init.throttle ?? 0 },
@@ -183,41 +187,66 @@ export class SimEngine {
     const s = this.state;
     const crew = s.crew;
     this.emit('crewCommand', { command: id, ready: crew.readyFor });
-    const prepared = (m: 'tack' | 'gybe') => crew.readyFor === m && crew.preparing <= 0;
+    const prepared = (...m: CrewManoeuvre[]) => crew.readyFor !== null && m.includes(crew.readyFor) && crew.preparing <= 0;
     const ack = (key: string) => (crew.lastAck = { key, t: s.t });
+    const prepare = (m: CrewManoeuvre) => {
+      crew.readyFor = m;
+      crew.preparing = PREPARE_TIME;
+      crew.sidesReady = noStations();
+      ack('ack.preparing');
+    };
+    const rollCall = (station: CrewStation) => {
+      // Each station answers "מוכן" only once the crew has finished preparing for the manoeuvre.
+      const ready = crew.readyFor !== null && crew.preparing <= 0;
+      if (ready) crew.sidesReady[station] = true;
+      this.emit('crewReport', { side: station, ready });
+      ack(ready ? `ack.ready.${station}` : 'ack.sideNotYet');
+    };
     switch (id) {
-      case 'prepareTack':
-      case 'prepareGybe':
-        crew.readyFor = id === 'prepareTack' ? 'tack' : 'gybe';
-        crew.preparing = PREPARE_TIME;
-        ack('ack.preparing');
+      case 'prepareTack': prepare('tack'); break;
+      case 'prepareGybe': prepare('gybe'); break;
+      case 'prepareUnfurl': prepare('unfurl'); break;
+      case 'checkStarboardReady': rollCall('starboard'); break;
+      case 'checkPortReady': rollCall('port'); break;
+      case 'checkMainReady': rollCall('main'); break;
+      case 'checkFurlerReady': rollCall('furler'); break;
+      case 'tack':
+      case 'gybe': {
+        // "סיבוב" / "מהפך": the helm goes over. The crew holds the jib sheets and waits for "העבר חלוץ!".
+        // In a gybe the mainsail must already have been centred ("מרכז ראשי").
+        const ready = prepared(id);
+        if (!ready) crew.readyFor = null;
+        ack(ready ? `ack.${id}` : 'ack.notReady');
         break;
-      case 'tack': {
-        const ready = prepared('tack');
+      }
+      case 'deadRun':
+        ack('ack.deadRun');
+        break;
+      case 'switchJib': {
+        // "העבר חלוץ!": one side releases the old sheet now, the other pulls the new one as the jib comes across.
+        const ready = prepared('tack', 'gybe');
         const { oldLine, newLine } = workingJibSheet(s);
         if (s.jib.deployed > 0.05) {
           this.addTask(id, ready ? 0 : UNPREPARED_DELAY, {
-            kind: 'tackJib', oldLine, newLine, startSign: sign(s.derived.twa) || 1, trigger: 'bow', phase: 'wait', elapsed: 0,
+            // The tack we started on follows from the working sheet, so a late call (after the wind crossed) still works.
+            kind: 'tackJib', oldLine, newLine, startSign: oldLine === 'jibPort' ? 1 : -1, trigger: 'bow', phase: 'release', elapsed: 0,
           });
         }
         crew.readyFor = null;
-        ack(ready ? 'ack.tack' : 'ack.notReady');
+        crew.sidesReady = noStations();
+        ack(ready ? 'ack.switchJib' : 'ack.notReady');
         break;
       }
-      case 'gybe': {
-        const ready = prepared('gybe');
-        const delay = ready ? 0 : UNPREPARED_DELAY;
-        if (s.main.hoist > 0.05) {
-          this.addTask(id, delay, { kind: 'gybeMain', startBoomSign: sign(s.main.boomAngle) || 1, phase: 'center', elapsed: 0 });
-        }
-        if (s.jib.deployed > 0.05) {
-          const { oldLine, newLine } = workingJibSheet(s);
-          this.addTask(id, delay, {
-            kind: 'tackJib', oldLine, newLine, startSign: sign(s.derived.twa) || 1, trigger: 'stern', phase: 'wait', elapsed: 0,
-          });
-        }
-        crew.readyFor = null;
-        ack(ready ? 'ack.gybe' : 'ack.notReady');
+      case 'unfurlJib': {
+        // "פתח חלוץ": the furling line is eased under control while the working (leeward) side pulls the sheet.
+        this.addTask(id, 0, { kind: 'set', line: 'furler', target: 1 });
+        if (prepared('unfurl')) {
+          const lee: LineId = (-sign(s.derived.awa) || 1) < 0 ? 'jibPort' : 'jibStarboard';
+          this.addTask(id, 0, { kind: 'trimOptimal', line: lee });
+          crew.readyFor = null;
+          crew.sidesReady = noStations();
+          ack('ack.unfurl');
+        } else ack('ack.ok');
         break;
       }
       case 'releaseJibStarboard': this.addTask(id, 0, { kind: 'set', line: 'jibStarboard', target: 0 }); ack('ack.ok'); break;
@@ -229,7 +258,6 @@ export class SimEngine {
       case 'centerMain': this.addTask(id, 0, { kind: 'set', line: 'mainsheet', target: 0.92 }); ack('ack.ok'); break;
       case 'hoistMain': this.addTask(id, 0, { kind: 'set', line: 'halyard', target: 1 }); ack('ack.ok'); break;
       case 'lowerMain': this.addTask(id, 0, { kind: 'set', line: 'halyard', target: 0 }); ack('ack.ok'); break;
-      case 'unfurlJib': this.addTask(id, 0, { kind: 'set', line: 'furler', target: 1 }); ack('ack.ok'); break;
       case 'furlJib': this.addTask(id, 0, { kind: 'set', line: 'furler', target: 0 }); ack('ack.ok'); break;
     }
     this.syncCrewView();

@@ -41,6 +41,7 @@ export interface TrainingResult {
 
 const TIMELINE_TYPES = new Set<SimEvent['type']>([
   'crewCommand',
+  'crewReport',
   'sailHoisted',
   'sailLowered',
   'jibUnfurled',

@@ -215,7 +215,9 @@ describe('tack and gybe transitions', () => {
     e.run(3);
     e.command('tack');
     e.setHelm(0.7);
-    e.run(14);
+    while (e.state.jib.luff < 0.8 && e.state.t < 20) e.run(0.1);
+    e.command('switchJib');
+    e.run(10);
     const types = e.events.map((x) => x.type);
     expect(types).toContain('crossedWind');
     expect(types).toContain('tackChanged');

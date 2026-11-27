@@ -105,10 +105,20 @@ export function SailControls({ drawer, onClose }: { drawer?: boolean; onClose?: 
       {tab === 'crew' ? (
         <div className="flex flex-col gap-1">
           <div className="grid grid-cols-4 gap-1">
-            <Cmd id="prepareTack" onDone={done} />
+            <Cmd id="prepareTack" onDone={done} className="!whitespace-normal leading-tight" />
             <Cmd id="tack" onDone={done} />
             <Cmd id="prepareGybe" onDone={done} />
             <Cmd id="gybe" onDone={done} />
+          </div>
+          {/* Tack roll call and jib switch. Physical layout: port on the left, starboard on the right. */}
+          <div className="grid grid-cols-3 gap-1" dir="ltr">
+            <Cmd id="checkPortReady" tone="port" onDone={done} />
+            <Cmd id="switchJib" onDone={done} />
+            <Cmd id="checkStarboardReady" tone="stbd" onDone={done} />
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            <Cmd id="checkMainReady" onDone={done} />
+            <Cmd id="deadRun" onDone={done} />
           </div>
           <div className="grid grid-cols-5 gap-1">
             <Cmd id="hoistMain" onDone={done} />
@@ -124,7 +134,9 @@ export function SailControls({ drawer, onClose }: { drawer?: boolean; onClose?: 
             <Cmd id="trimJibStarboard" tone="stbd" onDone={done} />
             <Cmd id="releaseJibStarboard" tone="stbd" onDone={done} />
           </div>
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-4 gap-1">
+            <Cmd id="prepareUnfurl" onDone={done} className="!whitespace-normal leading-tight" />
+            <Cmd id="checkFurlerReady" onDone={done} />
             <Cmd id="unfurlJib" onDone={done} />
             <Cmd id="furlJib" onDone={done} />
           </div>

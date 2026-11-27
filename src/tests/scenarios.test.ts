@@ -18,24 +18,100 @@ describe('scenario catalogue', () => {
 
 describe('tack scenario', () => {
   for (const dir of ['starboardToPort', 'portToStarboard'] as const) {
-    it(`succeeds with a correct, prepared tack (${dir})`, () => {
+    it(`succeeds with the full command sequence (${dir})`, () => {
       const def = getScenario('tack', dir);
       const { engine, ev, run, holdTwa } = setup(def);
       const sign = dir === 'starboardToPort' ? 1 : -1;
       run(2, () => holdTwa(45 * sign));
       engine.command('prepareTack');
       run(3, () => holdTwa(45 * sign));
+      engine.command('checkStarboardReady');
+      run(0.5, () => holdTwa(45 * sign));
+      engine.command('checkPortReady');
+      run(0.5, () => holdTwa(45 * sign));
       engine.command('tack');
       engine.setHelm(0.7 * sign);
+      // Wait for the jib to collapse head to wind, then "העבר חלוץ!".
+      run(15, () => (engine.state.jib.luff >= 0.8 ? true : undefined));
+      expect(Math.abs(engine.state.derived.twa)).toBeLessThan(35);
+      engine.command('switchJib');
       run(20, () => (sign * engine.state.derived.twa < -25 ? true : undefined));
       run(60, () => holdTwa(-45 * sign));
       expect(ev.finished?.success).toBe(true);
       expect(ev.errors.map((e) => e.ruleId)).toEqual([]);
+      expect(ev.stepStatus.every((x) => x === 'done')).toBe(true);
       expect(ev.finished!.score).toBeGreaterThanOrEqual(90);
     });
   }
 
-  it('flags missing crew preparation but accepts manual sheet handling as an alternative', () => {
+  it('a side asked before the crew finished preparing answers "not yet"', () => {
+    const def = getScenario('tack', 'starboardToPort');
+    const { engine, run, holdTwa } = setup(def);
+    engine.command('prepareTack');
+    engine.command('checkStarboardReady');
+    expect(engine.state.crew.sidesReady.starboard).toBe(false);
+    expect(engine.state.crew.lastAck?.key).toBe('ack.sideNotYet');
+    run(3, () => holdTwa(45));
+    engine.command('checkStarboardReady');
+    expect(engine.state.crew.sidesReady.starboard).toBe(true);
+    expect(engine.state.crew.lastAck?.key).toBe('ack.ready.starboard');
+  });
+
+  it('flags "Tacking" before both sides answered ready', () => {
+    const def = getScenario('tack', 'starboardToPort');
+    const { engine, ev, run, holdTwa } = setup(def);
+    engine.command('prepareTack');
+    run(3, () => holdTwa(45));
+    engine.command('checkStarboardReady');
+    engine.command('tack');
+    engine.setHelm(0.7);
+    run(15, () => (engine.state.jib.luff >= 0.8 ? true : undefined));
+    engine.command('switchJib');
+    run(20, () => (engine.state.derived.twa < -25 ? true : undefined));
+    run(60, () => holdTwa(-45));
+    expect(ev.finished?.success).toBe(true);
+    expect(ev.errors.map((e) => e.ruleId)).toEqual(['noSideCheck']);
+  });
+
+  it('flags "Switch jib" called before the jib collapsed', () => {
+    const def = getScenario('tack', 'starboardToPort');
+    const { engine, ev, run, holdTwa } = setup(def);
+    engine.command('prepareTack');
+    run(3, () => holdTwa(45));
+    engine.command('checkStarboardReady');
+    engine.command('checkPortReady');
+    engine.command('tack');
+    engine.setHelm(0.7);
+    run(0.3);
+    expect(engine.state.jib.luff).toBeLessThan(0.5);
+    engine.command('switchJib');
+    run(20, () => (engine.state.derived.twa < -25 ? true : undefined));
+    run(60, () => holdTwa(-45));
+    expect(ev.errors.map((e) => e.ruleId)).toContain('earlySwitch');
+  });
+
+  it('the crew holds the jib until "Switch jib": without it the jib stays aback', () => {
+    const def = getScenario('tack', 'starboardToPort');
+    const { engine, ev, run, holdTwa } = setup(def);
+    engine.command('prepareTack');
+    run(3, () => holdTwa(45));
+    engine.command('checkStarboardReady');
+    engine.command('checkPortReady');
+    engine.command('tack');
+    engine.setHelm(0.7);
+    run(20, () => (engine.state.derived.twa < -25 ? true : undefined));
+    run(8, () => holdTwa(-45));
+    expect(engine.state.jib.backed).toBe(true);
+    expect(engine.state.jib.portSheet).toBeGreaterThan(0.8);
+    expect(ev.errors.map((e) => e.ruleId)).toContain('jibBackedAfterTack');
+    // A late call still gets the jib across.
+    engine.command('switchJib');
+    run(15, () => holdTwa(-45));
+    expect(engine.state.jib.backed).toBe(false);
+    expect(engine.state.jib.portSheet).toBeLessThan(0.05);
+  });
+
+  it('flags missing crew commands but accepts manual sheet handling as an alternative', () => {
     const def = getScenario('tack', 'starboardToPort');
     const { engine, ev, run, holdTwa } = setup(def);
     run(2, () => holdTwa(45));
@@ -52,6 +128,7 @@ describe('tack scenario', () => {
     const ids = ev.errors.map((e) => e.ruleId);
     expect(ids).toContain('noPrepare');
     expect(ids).toContain('noAnnounce');
+    expect(ids).toContain('noSwitchCall');
     expect(ids).not.toContain('jibBackedAfterTack');
   });
 
@@ -78,24 +155,57 @@ describe('tack scenario', () => {
 
 describe('gybe scenario', () => {
   for (const dir of ['starboardToPort', 'portToStarboard'] as const) {
-    it(`controlled gybe succeeds (${dir})`, () => {
+    it(`controlled gybe with the full command sequence succeeds (${dir})`, () => {
       const def = getScenario('gybe', dir);
       const { engine, ev, run, holdTwa } = setup(def);
       const sign = dir === 'starboardToPort' ? 1 : -1;
       run(2, () => holdTwa(145 * sign));
       engine.command('prepareGybe');
       run(3, () => holdTwa(145 * sign));
-      engine.command('gybe');
+      engine.command('checkStarboardReady');
+      engine.command('checkPortReady');
+      engine.command('checkMainReady');
+      engine.command('centerMain');
       run(6, () => holdTwa(145 * sign));
+      engine.command('gybe');
+      run(25, () => {
+        holdTwa(178 * sign, 1 / 20);
+        if (Math.abs(engine.state.derived.twa) >= 167) return true;
+      });
+      engine.command('deadRun');
+      run(0.5, () => holdTwa(178 * sign, 1 / 20));
+      engine.command('switchJib');
       run(25, () => {
         holdTwa(178 * sign, 1 / 20);
         if (engine.state.main.boomAngle * sign > 3) return true;
       });
+      run(6, () => holdTwa(-145 * sign, 1 / 20));
+      engine.command('easeMain');
       run(80, () => holdTwa(-145 * sign, 1 / 20));
       expect(ev.errors.map((e) => e.ruleId)).toEqual([]);
       expect(ev.finished?.success).toBe(true);
+      expect(ev.stepStatus.every((x) => x === 'done')).toBe(true);
     });
   }
+
+  it('flags turning before centring the main, a missing "Dead run" and a missing roll call', () => {
+    const def = getScenario('gybe', 'starboardToPort');
+    const { engine, ev, run, holdTwa } = setup(def);
+    run(2, () => holdTwa(145));
+    engine.command('prepareGybe');
+    run(3, () => holdTwa(145));
+    engine.command('gybe');
+    engine.command('centerMain');
+    run(45, () => {
+      holdTwa(-175, 1 / 20);
+      if (engine.state.main.boomAngle > 3) return true;
+    });
+    run(4, () => holdTwa(-150, 1 / 20));
+    const ids = ev.errors.map((e) => e.ruleId);
+    expect(ids).toContain('noSideCheck');
+    expect(ids).toContain('turnBeforeCentre');
+    expect(ids).toContain('noDeadRun');
+  });
 
   it('detects an uncontrolled gybe when the main is left eased', () => {
     const def = getScenario('gybe', 'starboardToPort');
@@ -142,15 +252,33 @@ describe('raise main scenario', () => {
 });
 
 describe('open jib scenario', () => {
-  it('succeeds by unfurling and trimming the leeward sheet', () => {
+  it('succeeds with the full command sequence: the furler eases while the port side pulls', () => {
+    const def = getScenario('openJib');
+    const { engine, ev, run, holdTwa } = setup(def);
+    run(3, () => holdTwa(75));
+    engine.command('prepareUnfurl');
+    run(3, () => holdTwa(75));
+    engine.command('checkFurlerReady');
+    engine.command('checkPortReady');
+    engine.command('unfurlJib');
+    run(40, () => holdTwa(75));
+    expect(ev.errors.map((e) => e.ruleId)).toEqual([]);
+    expect(ev.finished?.success).toBe(true);
+    expect(ev.stepStatus.every((x) => x === 'done')).toBe(true);
+  });
+
+  it('unfurling without preparation: the sheet is not pulled and the commands are flagged', () => {
     const def = getScenario('openJib');
     const { engine, ev, run, holdTwa } = setup(def);
     engine.command('unfurlJib');
     run(10, () => holdTwa(75));
+    expect(engine.state.jib.portSheet).toBeLessThan(0.05);
     engine.command('trimJibPort');
     run(30, () => holdTwa(75));
-    expect(ev.errors.map((e) => e.ruleId)).toEqual([]);
     expect(ev.finished?.success).toBe(true);
+    const ids = ev.errors.map((e) => e.ruleId);
+    expect(ids).toContain('noPrepare');
+    expect(ids).toContain('noRollCall');
   });
 
   it('trimming the windward sheet backs the jib and is flagged', () => {

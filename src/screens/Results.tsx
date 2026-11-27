@@ -18,6 +18,7 @@ function Bar({ label, value }: { label: string; value: number }) {
 function eventText(e: TrainingResult['timeline'][number], t: (k: string) => string): string {
   let s = t(`ev.${e.type}`);
   if (e.type === 'crewCommand' && e.data?.command) s += `: ${t(`cmd.${e.data.command}`)}`;
+  if (e.type === 'crewReport') s += `: ${t(e.data?.side === 'main' ? 'mainsail' : e.data?.side === 'furler' ? 'furler' : e.data?.side === 'port' ? 'port' : 'starboard')} – ${t(e.data?.ready ? 'reportReady' : 'reportNotYet')}`;
   if (e.type === 'tackChanged' && e.data?.to) s += ` → ${t(`tack.${e.data.to}`)}`;
   if (e.type === 'pointOfSailChanged' && e.data?.to) s += ` → ${t(`pos.${e.data.to}`)}`;
   if ((e.type === 'sheetEased' || e.type === 'sheetTrimmed') && e.data?.line) s += ` (${t(e.data.line === 'jibPort' ? 'jibPortSheet' : e.data.line === 'jibStarboard' ? 'jibStbdSheet' : String(e.data.line))})`;

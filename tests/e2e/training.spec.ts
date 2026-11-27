@@ -112,14 +112,26 @@ test('guided tack scenario: commands, physical tack, results screen', async ({ p
   await page.getByTestId('home-training').click();
   await page.screenshot({ path: `screenshots/e2e-${info.project.name}-select.png` });
   await page.getByTestId('start-tack').click();
-  await expect(page.getByTestId('guided-step')).toContainText('הכן את הצוות');
+  await expect(page.getByTestId('guided-step')).toContainText('הצוות, היכון לסיבוב');
   await expect(page.getByTestId('cmd-prepareTack')).toHaveClass(/hl/);
   await page.screenshot({ path: `screenshots/e2e-${info.project.name}-tack-guided.png` });
   await page.getByTestId('cmd-prepareTack').click();
   await expect(page.getByTestId('crew-ack')).toContainText(/מוכן|מתכונן/);
   await page.waitForTimeout(3000);
+  // Roll call: "צד ימין מוכן?" "מוכן" – "צד שמאל מוכן?" "מוכן".
+  await expect(page.getByTestId('guided-step')).toContainText('צד ימין מוכן?');
+  await page.getByTestId('cmd-checkStarboardReady').click();
+  await expect(page.getByTestId('crew-ack')).toContainText('צד ימין: מוכן');
+  await expect(page.getByTestId('guided-step')).toContainText('צד שמאל מוכן?');
+  await page.getByTestId('cmd-checkPortReady').click();
+  await expect(page.getByTestId('crew-ack')).toContainText('צד שמאל: מוכן');
   await page.getByTestId('cmd-tack').click();
   await page.evaluate(() => window.__sim!.engine.setHelm(0.7));
+  // Wait for the jib to collapse head to wind, then "העבר חלוץ!".
+  await expect(page.getByTestId('guided-step')).toContainText('העבר חלוץ', { timeout: 15_000 });
+  await expect(page.getByTestId('cmd-switchJib')).toHaveClass(/hl/);
+  await page.screenshot({ path: `screenshots/e2e-${info.project.name}-tack-switch.png` });
+  await page.getByTestId('cmd-switchJib').click();
   await expect(page.getByTestId('tack')).toHaveText('מפנה שמאלי', { timeout: 20_000 });
   await holdTwaUntilResults(page, -45);
   await expect(page.getByTestId('results')).toBeVisible();

@@ -195,3 +195,20 @@ test('English UI switch and manual line controls', async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   expect(errors).toEqual([]);
 });
+
+test('close-hauled in shifty wind: the boat pulls into the wind and gusts are shown', async ({ page }, info) => {
+  const errors = collectErrors(page);
+  await page.goto('/');
+  await page.getByTestId('home-training').click();
+  await page.getByTestId('start-weatherHelm').click();
+  await expect(page.getByTestId('sim-screen')).toBeVisible();
+  await expect(page.getByTestId('weather-helm')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('weather-helm')).toContainText('נמשכת לרוח');
+  // With the wheel centred the bow climbs into the wind.
+  const twa0 = await page.evaluate(() => window.__sim!.engine.state.derived.twa);
+  await page.waitForTimeout(2500);
+  const twa1 = await page.evaluate(() => window.__sim!.engine.state.derived.twa);
+  expect(twa1).toBeLessThan(twa0 - 2);
+  await page.screenshot({ path: `screenshots/e2e-${info.project.name}-weather-helm.png` });
+  expect(errors).toEqual([]);
+});

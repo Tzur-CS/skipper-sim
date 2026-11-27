@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { engine } from '../../store/runtime';
+import { WindFeel } from './WindFeel';
 import { useHud } from '../../store/hudStore';
 import { useT } from '../../store/appStore';
 import { useHighlight } from '../useHighlight';
@@ -40,6 +41,8 @@ export function Helm() {
   };
 
   return (
+    <div className="flex flex-col items-center gap-1">
+    <WindFeel />
     <div className="flex items-end gap-2" dir="ltr" data-testid="helm">
       <div className="flex flex-col gap-1.5">
         <button className="btn bs btn-port w-11 h-11 text-lg" aria-label="port" data-testid="helm-port" onPointerDown={() => startNudge(-1)} onPointerUp={stopNudge} onPointerLeave={stopNudge} onPointerCancel={stopNudge}>
@@ -83,6 +86,7 @@ export function Helm() {
       <button className="btn bs btn-stbd w-11 h-11 text-lg" aria-label="starboard" data-testid="helm-stbd" onPointerDown={() => startNudge(1)} onPointerUp={stopNudge} onPointerLeave={stopNudge} onPointerCancel={stopNudge}>
         ▶
       </button>
+    </div>
     </div>
   );
 }

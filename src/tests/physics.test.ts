@@ -268,3 +268,25 @@ describe('reset', () => {
     expect(e.events.map((x) => x.type)).toEqual(['reset']);
   });
 });
+
+describe('weather helm', () => {
+  it('a heeled boat close-hauled turns into the wind with the wheel centred, more in stronger wind', () => {
+    const drift = (tws: number) => {
+      const e = new SimEngine(base({ wind: { trueFrom: 45, trueSpeed: tws }, speed: 5.5 }));
+      e.run(1);
+      const h0 = e.state.boat.heading;
+      e.run(4);
+      expect(e.state.derived.weatherHelm).toBeGreaterThan(0); // wind from starboard: pulled to starboard
+      return norm180(e.state.boat.heading - h0);
+    };
+    const light = drift(8);
+    const strong = drift(18);
+    expect(light).toBeGreaterThan(1);
+    expect(strong).toBeGreaterThan(light * 1.5);
+  });
+  it('heeled to windward (running by the lee) gives no weather helm', () => {
+    const e = new SimEngine(base({ wind: { trueFrom: 170, trueSpeed: 12 }, speed: 5 }));
+    e.run(3);
+    expect(Math.abs(e.state.derived.weatherHelm)).toBeLessThan(0.5);
+  });
+});

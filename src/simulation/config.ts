@@ -115,6 +115,30 @@ export const HYDRO = {
   sailYawGain: 0.00055,
   /** Bare-hull weathercocking (bow falls off when stopped head to wind), deg/s^2. */
   windYawGain: 0.35,
+  /**
+   * Weather helm (deg/s^2 per sin(heel)) at sailing speed. Heeling moves the drive outboard and makes
+   * the immersed hull asymmetric, so a heeled keelboat turns into the wind unless the helm holds it.
+   * Tuned so a boat at ~15° heel needs ~4° of rudder to hold course and ~7° at 25° heel.
+   */
+  weatherHelmGain: 7,
+};
+
+/**
+ * Gust / shift pattern: a fixed sum of slow sines (deterministic, so runs are repeatable).
+ * Returns g in about -1..1.
+ */
+export const WIND_VARIATION = {
+  gust: [
+    { amp: 0.55, period: 23, phase: 0.3 },
+    { amp: 0.3, period: 9.7, phase: 1.9 },
+    { amp: 0.15, period: 41, phase: 4.2 },
+  ],
+  shift: [
+    { amp: 0.6, period: 57, phase: 2.1 },
+    { amp: 0.4, period: 19, phase: 0.7 },
+  ],
+  /** Lulls are weaker than gusts: below the mean the pattern is scaled by this. */
+  lull: 0.35,
 };
 
 export const SIM = {

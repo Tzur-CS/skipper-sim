@@ -171,10 +171,11 @@ describe('right of way under sail', () => {
 
 describe('coastal traffic and night lights', () => {
   it('coastal traffic: completes with the trawler avoided and the police obeyed', () => {
-    const { engine, ev, run } = setup(getScenario('coastTraffic'));
+    const { engine, ev, run, holdTwa } = setup(getScenario('coastTraffic'));
     let k = 0;
     let mode = 'sail';
     let tStop = 0;
+    let policeClose = false;
     run(540, () => {
       const s = engine.state;
       const f1 = s.vessels.find((v) => v.id === 'f1')!;
@@ -185,7 +186,10 @@ describe('coastal traffic and night lights', () => {
         mode = 'stop';
         tStop = s.t;
       }
-      if (mode === 'stop' && s.t > tStop + 10 && ev.stepStatus[2] === 'done') mode = 'go';
+      // Carry on once the police boat has let us go (it peels away after we are slow alongside).
+      const p1 = s.vessels.find((v) => v.id === 'p1');
+      if (p1 && p1.range < 60) policeClose = true;
+      if (mode === 'stop' && s.t > tStop + 10 && ev.stepStatus[2] === 'done' && policeClose && (p1?.range ?? 999) > 80) mode = 'go';
       if (k % 90 === 0) {
         if (mode === 'stop') {
           engine.command('easeMain');
@@ -196,7 +200,9 @@ describe('coastal traffic and night lights', () => {
         }
       }
       const avoid = !f1.passed && f1.range < 420;
-      steerTo(engine, avoid ? s.boat.x - 60 : s.boat.y > 150 && s.boat.y < 450 ? -400 : -380, s.boat.y + 100);
+      // Police: sheets eased and head up so the sails luff and the boat slows (as the drill's hint says).
+      if (mode === 'stop') holdTwa(60 * (Math.sign(s.derived.twa) || -1));
+      else steerTo(engine, avoid ? s.boat.x - 60 : s.boat.y > 150 && s.boat.y < 450 ? -400 : -380, s.boat.y + 100);
       k++;
     });
     expect(ev.finished?.success).toBe(true);

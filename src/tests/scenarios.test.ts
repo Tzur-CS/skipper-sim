@@ -3,8 +3,8 @@ import { getScenario, SCENARIOS } from '../training/scenarios';
 import { setup } from './helpers';
 
 describe('scenario catalogue', () => {
-  it('defines eleven data-driven scenarios, all flagged for instructor review', () => {
-    expect(SCENARIOS).toHaveLength(11);
+  it('defines twelve data-driven scenarios, all flagged for instructor review', () => {
+    expect(SCENARIOS).toHaveLength(12);
     for (const s of SCENARIOS) {
       const def = s.build(s.variants?.[0].id);
       expect(def.steps.length).toBeGreaterThan(2);
@@ -360,5 +360,58 @@ describe('reset consistency', () => {
     a.engine.reset(def.initial);
     const second = trace();
     expect(second).toEqual(first);
+  });
+});
+
+describe('close-hauled in shifty wind (weather helm)', () => {
+  it('rounds up by itself with the wheel centred', () => {
+    const def = getScenario('weatherHelm');
+    const { engine, ev, run } = setup(def);
+    engine.setHelm(0);
+    run(40);
+    expect(Math.abs(engine.state.derived.twa)).toBeLessThan(30);
+    expect(ev.errors.map((e) => e.ruleId)).toContain('roundUp');
+    expect(ev.stepStatus[0]).toBe('done');
+  });
+
+  it('succeeds with small, continuous corrections through gusts, lulls and shifts', () => {
+    const def = getScenario('weatherHelm');
+    const { engine, ev, run, holdTwa } = setup(def);
+    const rudders: number[] = [];
+    run(2);
+    run(140, () => {
+      holdTwa(45);
+      rudders.push(engine.state.boat.rudder);
+    });
+    expect(ev.finished?.success).toBe(true);
+    expect(ev.errors.map((e) => e.ruleId)).toEqual([]);
+    expect(ev.stepStatus.slice(1).every((x) => x === 'done')).toBe(true);
+    // Holding the course takes opposite (port) helm all the time, and more in the gusts.
+    const settled = rudders.slice(150);
+    expect(Math.max(...settled)).toBeLessThan(0);
+    expect(Math.min(...settled) - Math.max(...settled)).toBeLessThan(-2);
+  });
+});
+
+describe('wind variation', () => {
+  it('gusts and shifts vary around the mean wind and repeat after a reset', () => {
+    const def = getScenario('weatherHelm');
+    const a = setup(def);
+    const speeds: number[] = [];
+    const dirs: number[] = [];
+    a.run(90, () => {
+      a.holdTwa(45);
+      speeds.push(a.engine.state.wind.trueSpeed);
+      dirs.push(a.engine.state.wind.trueFrom);
+    });
+    expect(Math.max(...speeds)).toBeGreaterThan(18);
+    expect(Math.min(...speeds)).toBeLessThan(13);
+    expect(Math.max(...dirs) - Math.min(...dirs)).toBeGreaterThan(8);
+    expect(a.engine.meanWind.trueSpeed).toBe(14);
+    a.engine.reset(def.initial);
+    a.engine.run(10);
+    const b = setup(def);
+    b.engine.run(10);
+    expect(a.engine.state.wind).toEqual(b.engine.state.wind);
   });
 });

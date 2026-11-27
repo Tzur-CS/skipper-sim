@@ -6,6 +6,7 @@ import { useApp, useLang, useT } from '../../store/appStore';
 import { useHighlight } from '../useHighlight';
 import { clamp } from '../../simulation/math';
 import type { CrewCommandId, LineId } from '../../simulation/types';
+import { WindFeel } from '../controls/WindFeel';
 import { Cmd, Gauge, Hold, LineRow, SailState } from '../controls/SailControls';
 import { InstrumentPanel } from '../instruments/InstrumentPanel';
 import { Compass } from '../instruments/Compass';
@@ -225,6 +226,8 @@ function SteerBar() {
   });
 
   return (
+    <div className="flex flex-col items-center gap-1">
+    <WindFeel compact />
     <div className="flex items-center gap-1" dir="ltr" data-testid="helm">
       <button className="btn bs glass btn-port w-12 !min-h-[48px] text-lg" aria-label="port" data-testid="helm-port" {...nudgeProps(-1)}>
         ◀
@@ -265,6 +268,7 @@ function SteerBar() {
       <button className={`btn bs glass !min-h-[48px] ${hlCenter ? 'hl' : ''}`} data-testid="helm-center" onClick={() => set(0)}>
         {t('center')}
       </button>
+    </div>
     </div>
   );
 }

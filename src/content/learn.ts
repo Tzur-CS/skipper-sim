@@ -132,6 +132,13 @@ export const MANOEUVRES: Section[] = [
     ),
   },
   {
+    title: t('נטייה לרוח (Weather helm)', 'Weather helm'),
+    body: t(
+      'בקדמית הסירה נוטה, ומפרשית נוטה תמיד נמשכת לעלות לרוח. לכן ההגאי מחזיק כל הזמן מעט הגה נגד. במשב הסירה נוטה יותר ונמשכת חזק יותר: מוסיפים מעט הגה (או משחררים מעט ראשי). ברגיעה מקטינים את ההגה. כשהרוח משנה כיוון עוקבים אחריה בתיקונים קטנים ואיטיים. בסימולטור המחוון "נמשכת לרוח" ליד ההגה מראה כמה חזק היא מושכת, ובשייט חופשי אפשר להוסיף משבים ושינויי כיוון.',
+      'Close-hauled the boat heels, and a heeled yacht always wants to round up into the wind, so the helmsman holds a little opposite helm all the time. In a gust she heels more and pulls harder: add a little helm (or ease the main a little). In a lull take some off. When the wind shifts, follow it with small, slow corrections. In the simulator the "Pulling into the wind" indicator by the wheel shows how hard she pulls, and free sailing can add gusts and shifts.',
+    ),
+  },
+  {
     title: t('תקוע ברוח (In irons)', 'In irons'),
     body: t(
       'הסירה נעצרה כשהחרטום מול הרוח ואין לה דרך. בסימולטור תראו אזהרה. יוצאים על ידי הגה לצד אחד ופתיחת החלוץ לצד השני.',

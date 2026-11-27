@@ -1,4 +1,4 @@
-import { AERO, HYDRO, MOTOR, SAILS, SIM, YACHT } from '../config';
+import { AERO, HYDRO, MOTOR, SAILS, SIM, WIND_VARIATION, YACHT } from '../config';
 import { DEG, KNOT, approach, clamp, norm180, norm360, sign } from '../math';
 import { apparentWind, trueWindAngle } from '../wind/wind';
 import { dynamicPressure, optimalChordAngle, sailForce, trimQuality } from '../sails/aero';
@@ -81,6 +81,8 @@ export class SimEngine {
   private lineDir: Record<LineId, number> = { mainsheet: 0, jibPort: 0, jibStarboard: 0, halyard: 0, furler: 0 };
   private lastRudderLogged = 0;
   private hitTimer = 0;
+  /** Mean wind (the gust / shift pattern varies around it). */
+  private baseWind = { from: 0, speed: 0, gusts: 0, shifts: 0 };
   private listeners = new Set<(e: SimEvent) => void>();
 
   constructor(init: InitialConditions = DEFAULT_CONDITIONS) {
@@ -94,6 +96,7 @@ export class SimEngine {
 
   reset(init: InitialConditions = this.initial): void {
     this.initial = init;
+    this.baseWind = { from: norm360(init.wind.trueFrom), speed: init.wind.trueSpeed, gusts: init.wind.gusts ?? 0, shifts: init.wind.shifts ?? 0 };
     const twa = trueWindAngle(init.wind.trueFrom, init.heading);
     const aw = apparentWind(twa, init.wind.trueSpeed, init.speed);
     const s: SimState = {
@@ -113,7 +116,7 @@ export class SimEngine {
         activeSheet: null,
       },
       crew: { readyFor: null, sidesReady: noStations(), preparing: 0, tasks: [], lastAck: null },
-      derived: { twa, awa: aw.awa, aws: aw.aws, tack: tackFromTwa(twa), pointOfSail: pointOfSailFromTwa(twa), driveForce: 0, sideForce: 0 },
+      derived: { twa, awa: aw.awa, aws: aw.aws, tack: tackFromTwa(twa), pointOfSail: pointOfSailFromTwa(twa), driveForce: 0, sideForce: 0, weatherHelm: 0, gust: 0, shift: 0 },
       input: emptyInput(),
       motor: { fitted: !!init.motor, throttle: init.throttle ?? 0, target: init.throttle ?? 0 },
       vessels: [],
@@ -153,6 +156,7 @@ export class SimEngine {
     s.vessels = this.world?.vessels ?? [];
     s.zones = this.world?.zonesIn ?? [];
     this.hitTimer = 0;
+    if (this.baseWind.gusts > 0 || this.baseWind.shifts > 0) this.updateWind();
     this.computeForces(0); // populate derived values
     this.emit('reset');
   }
@@ -178,9 +182,41 @@ export class SimEngine {
   answer(q: string, choice: string, correct: boolean): void {
     this.emit('answer', { q, choice, correct });
   }
+  /** Set the mean wind. Gusts and shifts (if any) keep varying around it. */
   setWind(trueFrom: number, trueSpeed: number): void {
-    this.state.wind.trueFrom = norm360(trueFrom);
-    this.state.wind.trueSpeed = clamp(trueSpeed, 0, 40);
+    this.baseWind.from = norm360(trueFrom);
+    this.baseWind.speed = clamp(trueSpeed, 0, 40);
+    this.updateWind();
+  }
+  /** Gust strength (kt) and shift amplitude (deg); 0 = steady wind. */
+  setWindVariation(gusts: number, shifts: number): void {
+    this.baseWind.gusts = clamp(gusts, 0, 15);
+    this.baseWind.shifts = clamp(shifts, 0, 30);
+    this.state.wind.gusts = this.baseWind.gusts;
+    this.state.wind.shifts = this.baseWind.shifts;
+    this.updateWind();
+  }
+  /** Mean wind and its variation settings (what the free-sailing sliders show). */
+  get meanWind(): { trueFrom: number; trueSpeed: number; gusts: number; shifts: number } {
+    const b = this.baseWind;
+    return { trueFrom: b.from, trueSpeed: b.speed, gusts: b.gusts, shifts: b.shifts };
+  }
+  /** Apply the deterministic gust / shift pattern around the mean wind for the current time. */
+  private updateWind(): void {
+    const s = this.state;
+    const b = this.baseWind;
+    const wave = (parts: Array<{ amp: number; period: number; phase: number }>) =>
+      parts.reduce((sum, p) => sum + p.amp * Math.sin((2 * Math.PI * s.t) / p.period + p.phase), 0);
+    let g = 0;
+    if (b.gusts > 0) {
+      const raw = wave(WIND_VARIATION.gust);
+      g = b.gusts * (raw >= 0 ? raw : raw * WIND_VARIATION.lull);
+    }
+    const sh = b.shifts > 0 ? b.shifts * wave(WIND_VARIATION.shift) : 0;
+    s.wind.trueSpeed = clamp(b.speed + g, 0, 45);
+    s.wind.trueFrom = norm360(b.from + sh);
+    s.derived.gust = s.wind.trueSpeed - b.speed;
+    s.derived.shift = sh;
   }
 
   command(id: CrewCommandId): void {
@@ -323,6 +359,7 @@ export class SimEngine {
   step(dt: number): void {
     const s = this.state;
     s.t += dt;
+    if (this.baseWind.gusts > 0 || this.baseWind.shifts > 0) this.updateWind();
     this.updateCrew(dt);
     this.updateLines(dt);
 
@@ -366,7 +403,12 @@ export class SimEngine {
     const slow = 1 - clamp(Math.abs(s.boat.speed) / 2, 0, 1);
     const windYaw = -HYDRO.windYawGain * Math.sin(2 * s.derived.twa * DEG) * slow * clamp(s.wind.trueSpeed / 12, 0, 2);
     const sailYaw = HYDRO.sailYawGain * f.yawMoment;
-    s.boat.yawRate += ((rTarget - s.boat.yawRate) / YACHT.yawTau + sailYaw + windYaw) * dt;
+    // Weather helm: the heeled boat turns toward the wind; needs way on (hull asymmetry acts through the water).
+    const way = clamp(Math.abs(s.boat.speed) / 4, 0, 1.2);
+    // Heeling to port (wind from starboard) turns the bow to starboard, i.e. into the wind; heel to windward gives lee helm.
+    const weatherHelm = -HYDRO.weatherHelmGain * Math.sin(s.boat.heel * DEG) * way;
+    s.derived.weatherHelm = weatherHelm;
+    s.boat.yawRate += ((rTarget - s.boat.yawRate) / YACHT.yawTau + sailYaw + windYaw + weatherHelm) * dt;
     s.boat.heading = norm360(s.boat.heading + s.boat.yawRate * dt);
 
     const h = s.boat.heading * DEG;
